@@ -1,0 +1,39 @@
+.stack 4M                   ; total addressable memory = 16M
+                            ; some are reserved for ports
+                            ; first instruction is @0
+                            ; ports begin @FFFFFF and go down
+                            ; stack begins after ports end and goes down
+                            ; @HI_STACK there is the user stack and 
+                            ;           it shrinks
+                            ; @LOW_STACK there is the procedure call stack
+                            ;            and it grows
+                            ; @LOW_STACK-1 the data segment begins and goes
+                            ;              down
+
+.data
+hex1    h2      DEAD
+hex2    h2      BEEF
+addr    addr    ABCDEF
+nb      d2      12345
+str     string  'Mary had a little lamb'
+array   ah1     A, B, C, D
+pixel1_1    addr    FF4A00  ; in theory. Some addresses are reserved for
+                            ; ports, duh
+
+.code
+begin:
+    mov2    AH, 0
+    mov2    AL, 0
+    mov2    EH, hex1
+    mov2    EL, hex2
+    add4    AX, EX
+    add4    EX, 1
+    sto4    AX, pixel1_1
+    jmp     begin 
+.include 'toolkit.a'    ; literally include code from another assembly here
+                        ; however, data definitions are appended and 
+                        ; some directives can be ignored
+special:
+    nop
+    nop
+    nop
