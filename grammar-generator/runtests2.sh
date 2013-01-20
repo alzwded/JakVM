@@ -26,14 +26,18 @@ function checkfail() {
 
 # passables
 for i in tests/test* ; do
+    echo cat $i
     cat -E $i
+    echo "cat $i | ./generator"
     cat $i | ./generator
     check
 done
 
 # failables
 for i in tests/fail* ; do
+    echo cat $i
     cat -E $i
+    echo "cat $i | ./generator"
     cat $i | ./generator
     checkfail
 done
