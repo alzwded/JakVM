@@ -1,0 +1,25 @@
+.b          machine code
+.a          assembly code
+.c          class in custom high-level programming language
+.m          static method definitions in same high-level language
+.d          data definitions for high-level programming language
+
+.a format:
+; comments
+.DIRECTIVE [PARAM ...]
+.data
+NAME    SIZE/TYPE   VALUE
+.code
+[LABEL:]    MNEMONIC    [PARAM1[, PARAM2]]  ; comments
+
+.b format:
+...binary, duh
+
+.c format:
+...to be copied over from crufty behemoth
+
+.m format:
+...TBD
+
+.d format:
+...TBD
