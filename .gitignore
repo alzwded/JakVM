@@ -15,3 +15,9 @@
 *.exe
 *.out
 *.app
+
+# custom
+grammar-generator/parser.tab.*
+grammar-generator/parser.output
+grammar-generator/lex.yy.c
+grammar-generator/generator
