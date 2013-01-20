@@ -1,0 +1,95 @@
+rst                 FFFF
+mov1    AD , X      0010X
+mov1    AC , X      0011X
+mov1    AB , X      0012X
+mov1    AA , X      0013X
+mov1    CD , X      0014X
+mov1    CC , X      0015X
+mov1    CB , X      0016X
+mov1    CA , X      0017X
+mov1    ED , X      0018X
+mov1    EC , X      0019X
+mov1    EB , X      001AX
+mov1    EA , X      001BX
+mov1    RRD, X      001CX
+mov1    RRC, X      001DX
+mov1    RRB, X      001EX
+mov1    RRA, X      001FX
+mov1    RQD, X      0020X
+mov1    RQC, X      0021X
+mov1    RQB, X      0022X
+mov1    RQA, X      0023X
+mov1    RWD, X      0024X
+mov1    RWC, X      0025X
+mov1    RWB, X      0026X
+mov1    RWA, X      0027X
+mov2    AH , X      0028XX
+mov2    AL , X      0029XX
+mov2    CH , X      002AXX
+mov2    CL , X      002BXX
+mov2    EH , X      002CXX
+mov2    EL , X      002DXX
+mov2    RRH, X      002EXX
+mov2    RRL, X      002FXX
+mov2    RQH, X      0030XX
+mov2    RQL, X      0031XX
+mov2    RWH, X      0032XX
+mov2    RWL, X      0033XX
+mov4    AX , X      0034XXXX
+mov4    CX , X      0035XXXX
+mov4    EX , X      0036XXXX
+mov4    RRX, X      0037XXXX
+mov4    RQX, X      0038XXXX
+mov4    RWX, X      0039XXXX
+mov4    SP , X      003AXXXX
+mov4    SB , X      003BXXXX
+mov4    P1 , X      003CXXXX
+mov4    P2 , X      003DXXXX
+mov4    IP , X      003EXXXX
+mvr1    AD , X      0040X
+mvr1    AC , X      0041X
+mvr1    AB , X      0042X
+mvr1    AA , X      0043X
+mvr1    CD , X      0044X
+mvr1    CC , X      0045X
+mvr1    CB , X      0046X
+mvr1    CA , X      0047X
+mvr1    ED , X      0048X
+mvr1    EC , X      0049X
+mvr1    EB , X      004AX
+mvr1    EA , X      004BX
+mvr1    RRD, X      004CX
+mvr1    RRC, X      004DX
+mvr1    RRB, X      004EX
+mvr1    RRA, X      004FX
+mvr1    RQD, X      0050X
+mvr1    RQC, X      0051X
+mvr1    RQB, X      0052X
+mvr1    RQA, X      0053X
+mvr1    RWD, X      0054X
+mvr1    RWC, X      0055X
+mvr1    RWB, X      0056X
+mvr1    RWA, X      0057X
+mvr2    AH , X      0058XX
+mvr2    AL , X      0059XX
+mvr2    CH , X      005AXX
+mvr2    CL , X      005BXX
+mvr2    EH , X      005CXX
+mvr2    EL , X      005DXX
+mvr2    RRH, X      005EXX
+mvr2    RRL, X      005FXX
+mvr2    RQH, X      0060XX
+mvr2    RQL, X      0061XX
+mvr2    RWH, X      0062XX
+mvr2    RWL, X      0063XX
+mvr4    AX , X      0064XXXX
+mvr4    CX , X      0065XXXX
+mvr4    EX , X      0066XXXX
+mvr4    RRX, X      0067XXXX
+mvr4    RQX, X      0068XXXX
+mvr4    RWX, X      0069XXXX
+mvr4    SP , X      006AXXXX
+mvr4    SB , X      006BXXXX
+mvr4    P1 , X      006CXXXX
+mvr4    P2 , X      006DXXXX
+mvr4    IP , X      006EXXXX

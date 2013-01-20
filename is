@@ -1,0 +1,151 @@
+currently 140 not counting duplicates because of stuff like mov1
+so waaaaaaaaaaay over 255
+so instructions are gonna be 4 bytes long
+
+gotta reduce that number to something more aligned
+so this is 32b, okay?
+but 16b pipeline
+
+::mem
+rst
+    reset -- sets everything to 0 :D
+    IP set to some default thing
+
+movX    D, X
+    move immediate data X into register D
+
+mvr1    D, S
+mvr2
+mvr4
+mvr8
+    move data from register S to register D
+    1 = one byte
+    2 = short
+    4 = int
+    8 = long
+
+lodX    D, S
+    loads data from address S into register D
+
+ldrX    D, S
+    loads data into register D from address stored in register S
+
+stoX    D, S
+    store data from register S at address D
+
+strX    D, S
+    store data from register S at address contained in register D
+
+pusX     R
+    push data from register R onto stack
+
+popX     R
+    pop data from stack into register R
+
+stz
+clz
+    set/clear zero flag
+
+stc
+clc
+    set/clear carry flag
+
+stt
+clt
+    set/clear trap flag
+
+::maths
+addX    D, X
+    sums registers D and X and stores result in D
+
+subX
+mulX
+divX
+
+::relational
+eqX     A, B
+    unsets the ZERO if registers A and B are equal
+    sets the ZERO flag if registers are not equal
+
+neX
+
+atX
+    above than -- unsigned >
+    sets the zero flag if not true
+
+btX
+    below than -- unsigned <
+
+aeX
+beX
+
+ltX
+    less than -- signed <
+
+gtX
+leX
+geX
+
+::bitwise
+andX    D, S
+    stores the result of bitwise D&S into register D
+
+orX     D, S
+xorX
+
+notX    R
+    flips the bits of R
+
+shlX    R, X
+    shifts register R to the left X positions
+    sets the carry flag if overflow
+
+shrX    R, X
+rolX
+rorX
+
+::array
+
+acrX R, P
+    access item @PP[IX] or @QP[JX] and store it in AX or EX
+
+acwX P, R
+    store AX or EX @PP[IX] or @QP[JX]
+
+fmaX
+    find the first char that matches between the arrays starting at
+    positions P1 and P2 while counter register is not 0, decreasing the
+    counter on each pass
+    if counter is 0 no matching elements were found
+    if counter is non 0, the INITIAL_VALUE - C'th element is the same
+
+fumX
+    find unmatching
+
+forX P
+    for COUNTER elements starting at position from registers P1 or P2 calls 
+    the procedure in ACCUMULATOR
+    sets the ACCUMULATOR (highest) to the value from god knows where
+
+std
+    set direction flag
+
+cld
+    clear direction flag
+
+::jumping
+beq     A
+    branches to address A if zero flag is not set
+
+bne     A
+    branches if zero flag is set
+
+jmp     A
+    jumps to address A unconditionally
+
+call
+    saves all the registers except for the accumulator,
+    and jumps to the address specified in the accumulator
+
+ret
+    returns from the last call

@@ -1,0 +1,181 @@
+so, register based machine
+
+we want:
+Accumulator
+Counter
+Extra
+Randy register
+Valiant register
+Wise register
+StackPointer
+StackBase -- used for CALL instruction
+Pointer1
+Pointer2
+InstructionPointer
+
+They all hold a generic Stuff object
+
+So we need a Processor struct to hold registers, maybe?
+We need jump addresses
+We need instructions
+
+so
+
+processor {
+    register A, C, E, R, I, J, SP, ZP, PP, QP, IP;
+    struct {
+        zero:1
+        carry:1
+        direction:1
+        trap:1
+    } flags;
+    maxmem;
+    maxstack;
+}
+
+union register {
+    struct { char b7, b6, b5, b4, b3, b2, b1, b0; } byte;
+    struct { int16_t hh, hl, lh, ll; } short;
+    struct { int32_t h, l; } int;
+    int64_t long;
+}
+
+memory manager {}
+
+meta:
+specify memory size
+    pre-allocates that many bytes with fancy allocator :>
+    should be:
+        total
+        stack size / heap size
+pre-specify files on filesystem or open/close them with "syscalls"
+this means preallocated addresses
+
+sys calls: 0x0--0xFFFF
+0xFFXX: cpu or mem related routines
+0xFF00: set mem size (should reset after this)
+0xFFFF: reset
+
+0x01XX: filesystem routines & file IO
+0x0100: open file for reading
+0x0101: open file for writing
+0x0102: open file for append
+0x0103: open file for readwrite
+0x0104: open file for readappend
+0x010A: check file exists
+0x010F: close file
+0x012X: various file informations
+
+0x02XX: IO text routines
+0x0200: putc
+0x0201: getc
+0x02FF: wputc
+0x02FE: wgetc
+
+0x03XX: graphics routines
+0x04XX: sound routines
+
+instruction set: (rough)
+
+::mem
+
+lod(A, B)
+sto(A, B)
+
+mov(A, B);
+    A: register, address
+    B: immediate, register as data, register as address, address as data, address as address
+
+push(A);
+    A: register as data, address as data, address
+
+pop(A);
+    A: register, address
+
+::maths
+
+add(A, B);
+    A: register
+    B: immediate, register as data, register as address
+
+sub(A, B);
+mul(A, B);
+div(A, B);
+divi(A, B);
+mod(A, B);
+
+CLZ
+STZ
+CLC
+STC
+CLT
+STT
+
+::rel
+at
+bt
+ate
+bte
+eq
+lt
+gt
+lte
+gte
+
+::bitwise
+and
+or
+xor
+not
+shl
+shr
+rol
+ror
+
+::array functions
+find matching
+find unmatching
+call for each
+set direction
+clear direction
+
+::jumps, branches, calls
+beq
+bne
+jmp
+
+call;
+    Address of instruction taken from A
+    pushes context on stack
+
+ret;
+    pops context from stack
+
+
+format of opcode asm file:
+file:   file statement
+    |   statement
+    ;
+statement:  asm WS paramlist WS opcode TERM ;
+asm:    [a-zA-Z]{2-3}[0-9]? ;
+paramlist:  param WS ',' WS param
+        |   param
+        ;
+param:  REGISTER
+    |   IMEDIATE
+    |   ADDRESS
+    ;
+opcode: opcode_part opcode_part
+    |   opcode_part opcode_part opcode_part opcode_part
+    ;
+opcode_part:    HEX HEX
+        |       OTHER OTHER ;
+OTHER:  'x' | '-' ;
+REGISTER:   AX, AH, AL, AD, AC, etc...
+IMEDIATE:   'x' ;
+ADDRESS:    'add' ;
+WS:     WS WS_PART 
+    |   WS_PART
+    ;
+WS_PART:    ' ' | '\t' ;
+TERM:   '\n' | EOF ;
