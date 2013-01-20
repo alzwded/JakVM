@@ -1,7 +1,7 @@
-tst1    AD, x   0ax-
+tst1    AD, _   0ax-
 tst2    AX      9888xxx-
 
 tst5    AD, ED  c3dd
 tst3    -       adxxxxx-
-tst9    AX, add ffaa
+tst9    AX, addr    ffaa
 

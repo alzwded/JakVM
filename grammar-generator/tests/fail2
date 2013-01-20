@@ -1,1 +1,1 @@
-tst6    x, AX   addd
+tst6    _, AX   addd
