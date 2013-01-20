@@ -6,6 +6,7 @@
 
 %option noreentrant
 %option noyywrap
+%option nocase-insensitive
 
 
 %%
