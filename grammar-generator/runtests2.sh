@@ -26,7 +26,7 @@ function checkfail() {
 
 # passables
 for i in tests/test* ; do
-    echo cat $i
+    echo cat -E $i
     cat -E $i
     echo "cat $i | ./generator"
     cat $i | ./generator
@@ -35,7 +35,7 @@ done
 
 # failables
 for i in tests/fail* ; do
-    echo cat $i
+    echo cat -E $i
     cat -E $i
     echo "cat $i | ./generator"
     cat $i | ./generator
