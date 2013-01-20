@@ -19,6 +19,7 @@ function checkfail() {
         echo
     else
         echo FAIL
+        echo
         fails=`expr $fails + 1`
     fi
 }
