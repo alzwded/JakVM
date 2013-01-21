@@ -49,13 +49,14 @@
 "--"        |
 "-x"        { return OTHER; }
 
-"addr"      { yylval.stringy = strdup(yytext); return ADDRESS; }
+"lbl"       { yylval.stringy = strdup("l"); return LABEL; }
+"addr"      { yylval.stringy = strdup("a"); return ADDRESS; }
 ^[a-zA-Z][a-zA-Z][0-9]?  |
 ^[a-zA0Z][a-zA-Z][a-zA-Z][0-9]? { yylval.stringy = strdup(yytext); return ASM; }
 
 
-"_"         { yylval.stringy = strdup("x"); return IMEDIATE; }
-"-"         { yylval.stringy = strdup(""); return NONE; }
+"_"         { yylval.stringy = strdup("_"); return IMEDIATE; }
+"-"         { yylval.stringy = NULL; return NONE; }
 
 [0-9a-f][0-9a-f]  { return HEX; }
 

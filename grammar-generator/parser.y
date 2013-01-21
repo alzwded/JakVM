@@ -25,9 +25,9 @@ int yyerror(char* s)
     int garbage;
 }
 
-%token UNEXPECTED ASM EOL ADDRESS IMEDIATE REGISTER OTHER WS_PART NONE HEX HEOF COMMA
+%token UNEXPECTED ASM EOL ADDRESS IMEDIATE REGISTER OTHER WS_PART NONE HEX HEOF COMMA LABEL
 
-%type <stringy> UNEXPECTED ASM EOL ADDRESS IMEDIATE REGISTER OTHER WS_PART NONE HEX HEOF COMMA
+%type <stringy> UNEXPECTED ASM EOL ADDRESS IMEDIATE REGISTER OTHER WS_PART NONE HEX HEOF COMMA LABEL
 %type <stringy> param
 %type <garbage> opcode_part
 %type <list> file
@@ -60,9 +60,11 @@ statement:  TERM
 paramlist:  REGISTER COMMA WS param WS
             { $$.param1 = $1; $$.param2 = $4; }
         |   REGISTER WS
-            { $$.param1 = $1; $$.param2 = ""; }
+            { $$.param1 = $1; $$.param2 = NULL; }
         |   NONE WS
-            { $$.param1 = ""; $$.param2 = ""; }
+            { $$.param1 = NULL; $$.param2 = NULL; }
+        |   LABEL WS
+            { $$.param1 = $1; $$.param2 = NULL; }
         ;
 param:  REGISTER
     |   IMEDIATE

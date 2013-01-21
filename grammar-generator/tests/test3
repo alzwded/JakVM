@@ -1,0 +1,2 @@
+jmp     lbl     0eee
+beq1    lbl     0ee1
