@@ -1,19 +1,20 @@
 so, register based machine
 
 we want:
-Accumulator
-Counter
-Extra
-Randy register
-Valiant register
-Wise register
-StackPointer
-StackBase -- used for CALL instruction
-Pointer1
-Pointer2
-InstructionPointer
-
-They all hold a generic Stuff object
+Accumulator         supports operations on 4,2,1 bytes
+Counter             supports operations on 4,2 bytes, used by array funcs
+Extra               alt accumulator
+Randy Register      RX, supports operations on full word
+IX                  index register, operations on 4 bytes
+JX                  same
+PP                  pointer register, uses IX for indexing
+QP                  same but uses JX
+SP                  user stack pointer
+ZP                  system stack pointer, used for CALL and the like
+IP                  instruction pointer, autoincrements after each operation
+                    except when set by the user or through jumps which sets
+                    the IPModif flag ; IPModif is first reset when
+                    beginnning an instructino cycle
 
 So we need a Processor struct to hold registers, maybe?
 We need jump addresses
@@ -21,26 +22,62 @@ We need instructions
 
 so
 
+machine {
+    processor*
+    memmgr*
+}
+
 processor {
     register A, C, E, R, I, J, SP, ZP, PP, QP, IP;
     struct {
-        zero:1
-        carry:1
         direction:1
-        trap:1
+        flag:1
+        ipmodif:1
     } flags;
-    maxmem;
-    maxstack;
+    unsigned long clock; // in ns or us
+    // should run at 2 or 3MHz
 }
 
 union register {
-    struct { char b7, b6, b5, b4, b3, b2, b1, b0; } byte;
-    struct { int16_t hh, hl, lh, ll; } short;
-    struct { int32_t h, l; } int;
-    int64_t long;
+    struct { uint8_t d, c, b, a; } byte; 
+    struct { uint16_t h, l; } half;
+    uint16_t word;
 }
 
-memory manager {}
+memory manager {
+    unsigned char mem[16 << (10 + 10)];
+    // FFxxxx are reserved for various things like framebuffer, input things
+    // usr stack begins at FEFFFF and goes down
+    // sys stack begins at FEFFFF - stack size and goes up
+    // memory snapshot (i.e. program) is loaded at FEFFFF - stack size - 1 -
+    //                                - snapshort size, IP is initially
+    //                                set to this location
+    // memory from 000000 is accessible to user how he sees fit
+    struct {
+        unsigned char* input1;
+        unsigned char* input2;
+    } pointers; // used by emulator to set various things
+
+    unsigned char* (access*)(uint8_t b3, uint8_t b2, uint8_t b1);
+    uint8_t (get1*)(uint8_t b3, uint8_t b2, uint8_t b1);
+    uint16_t (get2*)(uint8_t b3, uint8_t b2, uint8_t b1);
+    uint32_t (get4*)(uint8_t b3, uint8_t b2, uint8_t b1);
+    void (set1*)(uint8_t b3, uint8_t b2, uint8_t b1, uint8_t val);
+    void (set2*)(uint8_t b3, uint8_t b2, uint8_t b1, uint16_t val);
+    void (set4*)(uint8_t b3, uint8_t b2, uint8_t b1, uint32_t val);
+}
+
+snapshot {
+    directives = struct { stackSize:int, etc }
+    dataSize = unsigned long;
+    data = unsigned char*;
+} <- this gets loaded and executed
+only the data gets loaded as mentioned above, directives are handled by the
+loader
+
+loader {
+    void (load*)(machine*, snapshot*);
+}
 
 meta:
 specify memory size
@@ -51,6 +88,7 @@ specify memory size
 pre-specify files on filesystem or open/close them with "syscalls"
 this means preallocated addresses
 
+!!!no, these will not be implemented
 sys calls: 0x0--0xFFFF
 0xFFXX: cpu or mem related routines
 0xFF00: set mem size (should reset after this)
@@ -76,6 +114,7 @@ sys calls: 0x0--0xFFFF
 0x04XX: sound routines
 
 instruction set: (rough)
+^-- is maintained in is and is_opcodes2
 
 ::mem
 
@@ -104,12 +143,8 @@ div(A, B);
 divi(A, B);
 mod(A, B);
 
-CLZ
-STZ
-CLC
-STC
-CLT
-STT
+clf
+stf
 
 ::rel
 at

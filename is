@@ -42,17 +42,11 @@ pusX     R
 popX     R
     pop data from stack into register R
 
-stz
-clz
-    set/clear zero flag
+stf
+    sets the FLAG
 
-stc
-clc
-    set/clear carry flag
-
-stt
-clt
-    set/clear trap flag
+clf
+    resets the FLAG
 
 ::maths
 addX    D, X
@@ -62,16 +56,26 @@ subX
 mulX
 divX
 
+adiX    D, imediate
+    adds imediate value to register D
+
+aduX
+suuX
+muuX
+diuX
+    unsigned variants
+    if overflow, sets the FLAG
+
 ::relational
 eqX     A, B
-    unsets the ZERO if registers A and B are equal
-    sets the ZERO flag if registers are not equal
+    unsets the flag if registers A and B are equal
+    sets the flag if registers are not equal
 
 neX
 
 atX
     above than -- unsigned >
-    sets the zero flag if not true
+    sets the flag if not true
 
 btX
     below than -- unsigned <
@@ -112,20 +116,11 @@ acrX R, P
 acwX P, R
     store AX or EX @PP[IX] or @QP[JX]
 
-fmaX
-    find the first char that matches between the arrays starting at
-    positions P1 and P2 while counter register is not 0, decreasing the
-    counter on each pass
-    if counter is 0 no matching elements were found
-    if counter is non 0, the INITIAL_VALUE - C'th element is the same
-
-fumX
-    find unmatching
-
 forX P
     for COUNTER elements starting at position from registers P1 or P2 calls 
     the procedure in ACCUMULATOR
     sets the ACCUMULATOR (highest) to the value from god knows where
+    TODO this needs more details
 
 std
     set direction flag
@@ -134,16 +129,17 @@ cld
     clear direction flag
 
 ::jumping
-beq     A
-    branches to address A if zero flag is not set
+bfn     A
+    branches to address/label/relative A if flag is not set
+    branch if flag is not set
 
-bne     A
-    branches if zero flag is set
+bfs     A
+    branch if flag is set
 
 jmp     A
     jumps to address A unconditionally
 
-call
+cal
     saves all the registers except for the accumulator,
     and jumps to the address specified in the accumulator
 
