@@ -8,3 +8,4 @@ emulator                    contains the processor's definition and runtime
 keyboard                    keyboard input, glued to some ports on the emulator
 screen                      screen output, glued to some ports on the emulator
 printer                     text output, useful for debugging, I imagine
+debugger                    initially an assembler debugger
