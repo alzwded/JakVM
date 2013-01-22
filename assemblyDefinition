@@ -11,10 +11,11 @@
                             ;              down
 
 .data
-hex1    h2      DEAD
-hex2    h2      BEEF
+hex1    h2      0xDEAD
+hex2    h2      0xBEEF
+hex4    h4      0xAB2ACADA
 addr    addr    ABCDEF
-nb      d2      12345
+nb      d2      0d12345
 str     string  'Mary had a little lamb'
 array   ah1     A, B, C, D
 pixel1_1    addr    FF4A00  ; in theory. Some addresses are reserved for
@@ -29,7 +30,11 @@ begin:
     add4    AX, EX
     add4    EX, 1
     sto4    AX, pixel1_1
-    jmp     begin 
+    jmp     begin:
+    jmp     @0080C0
+    jmp     -0d13
+    jmp     -0xD
+    jmp     -0b1101
 .include 'toolkit.a'    ; literally include code from another assembly here
                         ; however, data definitions are appended and 
                         ; some directives can be ignored

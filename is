@@ -55,6 +55,7 @@ addX    D, X
 subX
 mulX
 divX
+modX
 
 adiX    D, imediate
     adds imediate value to register D
@@ -63,6 +64,7 @@ aduX
 suuX
 muuX
 diuX
+mouX
     unsigned variants
     if overflow, sets the FLAG
 
