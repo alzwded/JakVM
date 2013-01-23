@@ -119,10 +119,27 @@ acwX P, R
     store AX or EX @PP[IX] or @QP[JX]
 
 forX P
-    for COUNTER elements starting at position from registers P1 or P2 calls 
-    the procedure in ACCUMULATOR
-    sets the ACCUMULATOR (highest) to the value from god knows where
-    TODO this needs more details
+    P can be PP or QP and uses IX or JX as indexes (TODO wtf?)
+    resets return flag
+    pushes registers on sys stack *
+        for IX or JX (depending on which is used)
+        it pushes them incremented on the stack based on the value of X
+            and based on the value of the direction flag
+    if CX is one, decrement CX, increments IP, swaps RX and IP
+    if CX is zero, do nothing
+    if CX is other, decrements CX, swaps RX and IP
+
+rep
+    resets return flag
+    pushes registers on sys stack
+    if CX is one, increments IP, swaps RX and IP
+    if CX is zero, do nothing
+    else decrement CX, swap RX and IP
+
+ref
+    pushes registers on sys stack
+    if FLAG is set, swap IP and RX
+    else do nothing
 
 std
     set direction flag
@@ -141,9 +158,23 @@ bfs     A
 jmp     A
     jumps to address A unconditionally
 
+jpx
+    increments IP then swaps RX and IP
+
+jpr
+    swaps RX and IP, adds the value of RX to IP and increments RX
+
 cal
-    saves all the registers except for the accumulator,
-    and jumps to the address specified in the accumulator
+    pushes all registers on sys stack
+    increments IP then swaps RX and IP
+
+str
+    sets return flag
+
+clr
+    resets return flag
 
 ret
-    returns from the last call
+    pops registers from sys stack
+    if RETFLAG is 1 RX is left unmodified (can be used for return value)
+    if RETFLAG is 0 RX is also popped from the stack

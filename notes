@@ -1,10 +1,10 @@
 so, register based machine
 
-we want:
+we want: (in theory) (ignore this)
 Accumulator         supports operations on 4,2,1 bytes
 Counter             supports operations on 4,2 bytes, used by array funcs
 Extra               alt accumulator
-Randy Register      RX, supports operations on full word
+Return Register     RX, supports operations on full word
 IX                  index register, operations on 4 bytes
 JX                  same
 PP                  pointer register, uses IX for indexing
@@ -15,6 +15,20 @@ IP                  instruction pointer, autoincrements after each operation
                     except when set by the user or through jumps which sets
                     the IPModif flag ; IPModif is first reset when
                     beginnning an instructino cycle
+
+description of registers
+AX, EX              general purpose registers
+RX                  used for calling / returning from procedures
+                    based on RETURN flag, can contain return value
+CX                  count register -- used for repet instructions and such
+PP, QP              contain the base address of an array
+IX, JX              indexes for those arrays
+SP                  user stack pointer
+ZP                  system stack pointer <- used to store data between
+                    procedure calls
+IP                  instruction pointer, incremented after each instruction
+                    except when the internal IPModif flag is set
+                    the IPModif flag is reset after each check
 
 So we need a Processor struct to hold registers, maybe?
 We need jump addresses
@@ -28,11 +42,12 @@ machine {
 }
 
 processor {
-    register A, C, E, R, I, J, SP, ZP, PP, QP, IP;
+    register AX, EX, CX, RX, IX, JX, SP, ZP, PP, QP, IP;
     struct {
         direction:1
         flag:1
         ipmodif:1
+        retflag:1
     } flags;
     unsigned long clock; // in ns or us
     // should run at 2 or 3MHz
