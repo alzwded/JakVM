@@ -164,13 +164,11 @@ jmp     A
     sets IPMODIF flag
     jumps to address A unconditionally
 
-jpx
+jrx
     sets IPMODIF flag
-    increments IP then swaps RX and IP
-
-jpr
-    sets IPMODIF flag
-    swaps RX and IP, adds the value of RX to IP and increments RX
+    if high bits of RX are 00 then increments IP and swaps RX and IP
+    if high bits of RX are FF then swaps RX and IP, adds RX to IP and
+        increments RX
 
 cal
     sets IPMODIF flag
