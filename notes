@@ -1,25 +1,10 @@
 so, register based machine
 
-we want: (in theory) (ignore this)
-Accumulator         supports operations on 4,2,1 bytes
-Counter             supports operations on 4,2 bytes, used by array funcs
-Extra               alt accumulator
-Return Register     RX, supports operations on full word
-IX                  index register, operations on 4 bytes
-JX                  same
-PP                  pointer register, uses IX for indexing
-QP                  same but uses JX
-SP                  user stack pointer
-ZP                  system stack pointer, used for CALL and the like
-IP                  instruction pointer, autoincrements after each operation
-                    except when set by the user or through jumps which sets
-                    the IPModif flag ; IPModif is first reset when
-                    beginnning an instructino cycle
-
 description of registers
-AX, EX              general purpose registers
+AX, EX              general purpose registers; can be accessed to the byte
 RX                  used for calling / returning from procedures
                     based on RETURN flag, can contain return value
+                    can be accessed to the half
 CX                  count register -- used for repet instructions and such
 PP, QP              contain the base address of an array
 IX, JX              indexes for those arrays

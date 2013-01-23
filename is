@@ -162,7 +162,9 @@ bfs     A
 
 jmp     A
     sets IPMODIF flag
-    jumps to address A unconditionally
+    jumps to label A unconditionally
+    internally, it's a relative jump
+    for absolute jumps, use jrx?
 
 jrx
     sets IPMODIF flag
