@@ -1,0 +1,48 @@
+reserved in FFC000 .. FFFFFF
+that means FF0000..FFBFFF are free for other things
+81x61 tiles => 320x240
+screen offset which may be 0..3 pixels
+tile: 4x4 with 4 indexed colours contained in a pallette + pallette idx
+
+64 sprites
+4x4
+colours: blank, cl1, cl2, cl3 + pallette idx
+
+bg sprite size:
+0: pallette idx
+1..2: tile colour indexes
+
+fg sprite size:
+0: pallette idx
+1: hi: x; lo: y <- in pixels
+2..3: tile colour indexes
+
+pallette:
+0: AAAB
+1: BBCC
+2: CDDD
+
+so mem layout: -- relative 0..16383
+variant one:
+0: bg offset (high 2 bits) variant of screen splitting (next two bits)
+1..14823: bg tiles
+14824..14888: sprites (64)
+14888..16383: pallettes (1495 pallettes are a bit overkill)
+
+variant two:
+0: bg offset (high 2 bits) variant of screen splitting (next two bits)
+1..14823: bg tiles
+14824..16120: 324 sprites
+16121..16383: 87- pallettes // TODO fix this
+
+variant three:
+0: bg offset (high 2 bits) variant of screen splitting (next two bits)
+1..14823: bg tiles
+14824..15852: 256 sprites
+15853..16383: 531 pallettes
+
+variant four:
+1..14823: bg tiles
+0: bg offset (high 2 bits) variant of screen splitting (next two bits)
+14824..16304: 370 sprites
+16305..16383: 24 pallettes
