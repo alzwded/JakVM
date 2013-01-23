@@ -229,3 +229,11 @@ WS:     WS WS_PART
     ;
 WS_PART:    ' ' | '\t' ;
 TERM:   '\n' | EOF ;
+
+======================================================================
+ON ADDRESSES: 24bit
+hhXXYYZZ
+hh: if 00, it's an absolute address
+    if FF, it's a relative address
+XX: if FF, it's system reserved
+    anything else is general purpose memory

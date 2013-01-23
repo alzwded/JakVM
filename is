@@ -119,6 +119,7 @@ acwX P, R
     store AX or EX @PP[IX] or @QP[JX]
 
 forX P
+    sets IPMODIF flag
     P can be PP or QP and uses IX or JX as indexes (TODO wtf?)
     resets return flag
     pushes registers on sys stack *
@@ -130,6 +131,7 @@ forX P
     if CX is other, decrements CX, swaps RX and IP
 
 rep
+    sets IPMODIF flag
     resets return flag
     pushes registers on sys stack
     if CX is one, increments IP, swaps RX and IP
@@ -137,6 +139,7 @@ rep
     else decrement CX, swap RX and IP
 
 ref
+    sets IPMODIF flag
     pushes registers on sys stack
     if FLAG is set, swap IP and RX
     else do nothing
@@ -149,22 +152,28 @@ cld
 
 ::jumping
 bfn     A
+    sets IPMODIF flag
     branches to address/label/relative A if flag is not set
     branch if flag is not set
 
 bfs     A
+    sets IPMODIF flag
     branch if flag is set
 
 jmp     A
+    sets IPMODIF flag
     jumps to address A unconditionally
 
 jpx
+    sets IPMODIF flag
     increments IP then swaps RX and IP
 
 jpr
+    sets IPMODIF flag
     swaps RX and IP, adds the value of RX to IP and increments RX
 
 cal
+    sets IPMODIF flag
     pushes all registers on sys stack
     increments IP then swaps RX and IP
 
@@ -175,6 +184,7 @@ clr
     resets return flag
 
 ret
+    sets IPMODIF flag
     pops registers from sys stack
     if RETFLAG is 1 RX is left unmodified (can be used for return value)
     if RETFLAG is 0 RX is also popped from the stack
