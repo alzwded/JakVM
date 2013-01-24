@@ -188,3 +188,10 @@ ret
     pops registers from sys stack
     if RETFLAG is 1 RX is left unmodified (can be used for return value)
     if RETFLAG is 0 RX is also popped from the stack
+
+::timing
+sti X
+    set timer interval to immediate X which is a tick count
+
+slp
+    run no-ops until timer set with sti is depleted
