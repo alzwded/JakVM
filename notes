@@ -34,8 +34,9 @@ processor {
         ipmodif:1
         retflag:1
     } flags;
-    unsigned long clock; // in ns or us
-    // should run at 2 or 3MHz
+    unsigned int32_t timer_ticks; // resets on sti, prevents slp op if > at
+    unsigned int32_t timer_at;
+    // should run at ~30-33MHz
 }
 
 union register {
