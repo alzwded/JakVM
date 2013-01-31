@@ -17,7 +17,7 @@
 ","         { return COMMA; }
 [\r\n]      { return EOL_ATOM; }
 
-[a-zA-Z_][a-zA-Z_0-9]*: { return LABEL; }
+^[ ]*[a-zA-Z_][a-zA-Z_0-9]*: { return LABEL; }
 [a-zA-Z_][a-zA-Z_0-9]*   { return IDENT; }
 
 0[xX][0-9a-fA-F]* { return HEX; }

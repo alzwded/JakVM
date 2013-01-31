@@ -15,11 +15,18 @@ hex1    h2      0xDEAD
 hex2    h2      0xBEEF
 hex4    h4      0xAB2ACADA
 addr    addr    ABCDEF
-nb      d2      0d12345
+nb      h2      0d12345
 str     string  'Mary had a little lamb'
-array   ah1     A, B, C, D
+array   a1      A, B, C, D
 pixel1_1    addr    FF4A00  ; in theory. Some addresses are reserved for
                             ; ports, duh
+
+.pre
+keep    h1                  ; all are initialized to 0 starting from
+                            ; address 0
+stuff   a1      64          ; 64 bytes
+idx     h2                  ; one 16bit halfword, init'd to 0
+stuff2  a4      16          ; 64 bytes
 
 .code
 begin:
