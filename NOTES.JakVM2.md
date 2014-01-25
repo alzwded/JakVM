@@ -138,11 +138,19 @@ Everything is (should be?) big endian.
 * First set add value from LSB register to MSB register (VVVV=0)
 * Second set add imediate value to register (VVVV!=0)
 
-0xD0 - 0xDF Range: reserved
+0xD0 - 0xD3 Range, 3 bytes: subroutine instructions
 
-| Instruction   | Code           |
-|---------------|----------------|
-| reserved      | 0b 11 01 ?? ?? |
+| Instruction   | Code           | 2nd & 3rd
+|---------------|----------------|------------|
+| CAL           | 0b 11 01 00 00 | 0xADDR     |
+| RCL           | 0b 11 01 00 01 | 0xADDR     |
+| CAR           | 0b 11 01 00 00 | 0xRVVV     |
+| RCR           | 0b 11 01 00 01 | 0xRVVV     |
+
+* CAL: pushes the registers on the stack in the following order: PC, AX, BX, CX, SP and proceeds to set PC to ADDR
+* RCL: loads the value from ADDR into SP and proceeds to pop CX, BX, AX, PC. This instruction modifies the PC. Calling op-code F3 FF FF considers the stack to be the current value.
+* CAR: same as CAL, but jumps to the address specified in register R + offset VVV
+* RCR: same as RCL but stack is taken from R + offset
 
 0xE0 - 0xE3 Range: Interrupt checking
 
@@ -248,6 +256,10 @@ Instruction cheat sheet
 * SUB AX, 16 ; SUBstract
 * MUL AX, CX ; MULtiply
 * DIV CX, 4 ; DIVide
+* CAL 400h ; CALl
+* RCL 200h ; ReCalL
+* CAR AX ; CAll Register
+* RCR AX ; ReCall Register
 * IRF 80h ; InterRupt Flags
 * ROL AX, BX ; ROtate Left
 * SHL AX, 2 ; SHift Left
