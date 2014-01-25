@@ -1,14 +1,23 @@
 Registers
 =========
 
-| Name              | Description                     | AD |
-|-------------------|---------------------------------|----|
-| AX                | Accumulator                     | 00 |
-| BX                | Accumulator                     | 01 |
-| SP                | Stack pointer                   | 11 |
-| SI                | Stack index                     | 10 |
-| PC                | Program counter (N/A)           | -- |
-| RS                | Status flags (c.f. Flags) (N/A) | -- |
+| Name              | Description                     | AD | Width |
+|-------------------|---------------------------------|----|-------|
+| AX                | Accumulator                     | 00 | 16b   |
+| BX                | Accumulator                     | 01 | 16b   |
+| SP                | Stack pointer                   | 11 | 16b   |
+| SI                | Stack index                     | 10 | 16b   |
+| PC                | Program counter (N/A)           | -- | 16b   |
+| RS                | Status flags (c.f. Flags) (N/A) | -- |  8b   |
+| RF                | Interrupt flags (N/A)           | -- |  8b   |
+
+* AX, BX, SP and SI can be used as general purpose register
+* AX and BX are implicit in the CMP instruction
+* SP and SI are implicit in the PUS and POP instructions. PUS auto post-decrements SI, POP auto pre-increments SI.
+* PC cannot be read. It can only be modified via the J** instructions
+* RS and RF may be implemented in the same register. RS can only be read by the J** instructions. RF can only be read via the IRF instruction with a mask.
+* RS is modified by various instructions (Arithmetic, Bitwise, IRF, CLI...)
+* RF is modified by external forces and is cleared by the RET instruction
 
 Flags
 =====
@@ -19,6 +28,19 @@ Flags
 | C             | Overflow/Carry    |
 | S             | Sign              |
 | I             | Interrupt request |
+
+The layout is: `Z``C``S``0``0``0``0``I`
+
+Interrupt flags
+===============
+
+| Name          | Description        |
+|---------------|--------------------|
+| RS            | Reset              |
+| XT            | External interrupt |
+| BS            | Buffer swapped     |
+
+The layout is: `RS``XT``BS``0``0``0``0``0`
 
 Instruction set
 ===============
@@ -36,13 +58,16 @@ Everything is (should be?) big endian.
 
 | Instruction | Code           | Range        |
 |-------------|----------------|--------------|
-| NOP         | 0b 00 00 00 00 | 0x00 - 0x07  |
-| INT         | 0b 00 00 00 01 | 0x00 - 0x07  |
-| ENI         | 0b 00 00 00 10 | 0x00 - 0x07  |
-| DEI         | 0b 00 00 00 11 | 0x00 - 0x07  |
-| RST         | 0b 00 00 01 00 | 0x00 - 0x07  |
-| HLT         | 0b 00 00 01 01 | 0x00 - 0x07  |
-| reserved    | 0b 00 00 1? ?? | 0x08 - 0x0F  |
+| NOP         | 0b 00 00 00 00 |              |
+| INT         | 0b 00 00 00 01 |              |
+| ENI         | 0b 00 00 00 10 |              |
+| DEI         | 0b 00 00 00 11 |              |
+| RST         | 0b 00 00 01 00 |              |
+| HLT         | 0b 00 00 01 01 |              |
+| CMP         | 0b 00 00 10 00 |              |
+| RET         | 0b 00 00 10 01 |              |
+| reserved    | 0b 00 00 10 1? | 0x0A - 0x0B  |
+| reserved    | 0b 00 00 11 ?? | 0x0C - 0x0F  |
 | PUS         | 0b 00 01 00 RR | 0x10 - 0x13  |
 | POP         | 0b 00 01 01 RR | 0x14 - 0x17  |
 | reserved    | 0b 00 01 1? ?? | 0x18 - 0x1F  |
@@ -53,10 +78,10 @@ Everything is (should be?) big endian.
 | JGE         | 0b 00 11 01 RR | 0x20 - 0x3F  |
 | JOF         | 0b 00 11 10 RR | 0x20 - 0x3F  |
 | JNF         | 0b 00 11 11 RR | 0x20 - 0x3F  |
-| reserved    | 0b 01 00 ?? ?? | 0x20 - 0x3F  |
-| MOV         | 0b 01 01 RR RR | 0x40 - 0x7F  |
-| LOD         | 0b 01 10 RR RR | 0x40 - 0x7F  |
-| STO         | 0b 01 11 RR RR | 0x40 - 0x7F  |
+| reserved    | 0b 01 00 ?? ?? | 0x40 - 0x4F  |
+| MOV         | 0b 01 01 RR RR | 0x50 - 0x5F  |
+| LOD         | 0b 01 10 RR RR | 0x60 - 0x6F  |
+| STO         | 0b 01 11 RR RR | 0x70 - 0x7F  |
 
 * NOP: does nothing
 * INT: software interrupt
@@ -64,6 +89,8 @@ Everything is (should be?) big endian.
 * DEI: disable interrupts
 * RST: reset
 * HLT: sleep (stop clock)
+* CMP: compare AX and BX and set Z flag if they are identical
+* RET: return from interrupt handler. Clears RF register.
 * PUS: stack push
 * POP: stack pop
 * JIZ: branch if Z flag is set
@@ -107,12 +134,19 @@ Everything is (should be?) big endian.
 * First set add value from LSB register to MSB register (VVVV=0)
 * Second set add imediate value to register (VVVV!=0)
 
-0xD0 - 0xE3 Range: reserved
+0xD0 - 0xDF Range: reserved
 
 | Instruction   | Code           |
 |---------------|----------------|
 | reserved      | 0b 11 01 ?? ?? |
-| reserved      | 0b 11 10 00 ?? |
+
+0xE0 - 0xE3 Range: Interrupt checking
+
+| Instruction   | Code           | 2nd B      |
+|---------------|----------------|------------|
+| IRF           | 0b 11 10 00 11 | 0bVVVVVVVV |
+
+* IRF: check interrupt flag register agains immediate mask. Sets Z flag if mask matches the RF register.
 
 0xE4 - 0xE7 Range, 2 bytes: Shifting Instructions
 
@@ -165,7 +199,7 @@ Everything is (should be?) big endian.
 
 | Instruction   | Code (1st B)   | 2nd & 3rd | Range          |
 |---------------|----------------|-----------|----------------|
-| MVI           | 0b 11 11 01 RR | 0xVV 0xVV | 0xF0 - 0xF8    |
+| MVI           | 0b 11 11 01 RR | 0xVV 0xVV | 0xF4 - 0xF7    |
 
 * MVI: stores the immediate value into register RR
 
