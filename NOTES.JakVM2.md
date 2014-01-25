@@ -5,16 +5,16 @@ Registers
 |-------------------|---------------------------------|----|-------|
 | AX                | Accumulator                     | 00 | 16b   |
 | BX                | Accumulator                     | 01 | 16b   |
+| CX                | Accumulator                     | 10 | 16b   |
 | SP                | Stack pointer                   | 11 | 16b   |
-| SI                | Stack index                     | 10 | 16b   |
 | PC                | Program counter (N/A)           | -- | 16b   |
 | RS                | Status flags (c.f. Flags) (N/A) | -- |  8b   |
 | RF                | Interrupt flags (N/A)           | -- |  8b   |
 | IS                | Interrupt state                 | -- | 88b   |
 
-* AX, BX, SP and SI can be used as general purpose register
+* AX, BX, SP and CX can be used as general purpose register
 * AX and BX are implicit in the CMP instruction
-* SP and SI are implicit in the PUS and POP instructions. PUS auto post-decrements SI, POP auto pre-increments SI.
+* SP is implicit in the PUS and POP instructions. PUS auto post-decrements SP, POP auto pre-increments SI.
 * PC cannot be read. It can only be modified via the J** instructions
 * RS and RF may be implemented in the same register. RS can only be read by the J** instructions. RF can only be read via the IRF instruction with a mask.
 * RS is modified by various instructions (Arithmetic, Bitwise, IRF, CLI...)
@@ -215,12 +215,67 @@ Everything is (should be?) big endian.
 
 * atomic incrementation and decrementation instructions applied to register
 
+Instruction cheat sheet
+=======================
+
+* NOP ; No OP
+* INT ; INTerrupt
+* ENI ; ENable Interrupts
+* DEI ; DisablE Interrupts
+* RST ; ReSeT
+* HLT ; HaLT
+* CMP ; CoMPare
+* RET ; RETurn
+* PUS AX ; PUSh
+* POP AX ; POP
+* JMP AX ; JuMP     ; MVI AX, label: JMP AX
+* JUZ AX ; JUmp if Zero
+* JNZ BX ; Jump if Not Zero
+* JLT CX ; Jump if Less Than
+* JGE SP ; Jump if Greater than or Equal
+* JOF AX ; Jump if OverFlow
+* JNF AX ; Jump if No Overflow
+* MOV AX, BX ; MOVe
+* LOD AX, AX ; LOaD
+* STO AX, BX ; STOre
+* NEG AX ; NEGate
+* NOT AX ; NOT
+* AND AX, BX ; AND
+* IOR BX, CX ; Inclusive OR
+* XOR AX, SP ; eXclusive OR
+* ADD AX, BX ; ADD
+* SUB AX, 16 ; SUBstract
+* MUL AX, CX ; MULtiply
+* DIV CX, 4 ; DIVide
+* IRF 80h ; InterRupt Flags
+* ROL AX, BX ; ROtate Left
+* SHL AX, 2 ; SHift Left
+* SHR BX, 15 ; SHift Right
+* ROR CX, AX ; ROtate Right
+* CLI FFh ; CLear flags (I?)
+* JMI -60 ; JuMp to Immediate value
+* JZI loop: ; Zero
+* JNI l: ; Nonzero
+* JLI l: ; Less
+* JGI l: ; Greater
+* JOI l: ; Overflow
+* JUI l: ; Underflow
+* LDI AX, SP, 2 ; LoaD immediate value
+* STI SP, AX, 15 ; STore
+* SRI AX, SP, BX, 3 ; Store value at Register plus Immediate
+* LRI SP, CX, AX, 0 ; Load
+* MVI AX, 329 ; MoVe Immediate value
+* INC AX ; INCrement
+* DEC AX ; DECrement
+
 jasm format
 ===========
 
 .int                    ; handle interrupts
     IRF 80h             ; if CPU was just reset
-    JNZ main:           ; start with main
+    MVI AX, main:       ; start with main
+    JNZ AX
+
     IRF 40h             ; external interrupt
     JIZ refresh:
     RET                 ; return to where I was. Registers are restored
@@ -238,32 +293,32 @@ loop:
     STO BX, AX          ; store digit character at address 255
     POP AX              ; restore counter
     DEC AX              ; decrement
-    JIZ lf:             ; if counter is zero, jump to line feed
-    JMP loop:           ; else, jump back to loop
+    JZI lf:             ; if counter is zero, jump to line feed
+    JMI loop:           ; else, jump back to loop
 
 lf:
-    MOV AX, 20h         ; move value 32 (space) to AX
+    MVI AX, 20h         ; move value 32 (space) to AX
     STO BX, AX          ; store space at 255
 
 xor:
-    MOV BX, 400h
+    MVI BX, 400h
     LOD AX, BX
-    MOV BX, $wAwesome
+    MVI BX, $wAwesome
     XOR AX, BX
-    JNZ hello:
-    MOV BX, 400h
+    JNI hello:
+    MVI BX, 400h
     LOD AX, BX
     INC AX
     STO BX, AX
-    JMP xor:
+    JMI xor:
 
 hello:
-    MOV AX, 100h        ; store address 0x100 on the stack
+    MVI AX, 100h        ; store address 0x100 on the stack
     PUS AX
 
-    MOV AX, @sHello     ; init AX to point at the start of sHello
+    MVI AX, @sHello     ; init AX to point at the start of sHello
     PUS AX              ; store it on the stack
-    MOV BX, 12          ; add 12 to AX to point at the end of sHell
+    MVI BX, 12          ; add 12 to AX to point at the end of sHell
     ADD AX, BX
     PUS AX              ; push that on the stack
 
@@ -272,9 +327,9 @@ helloLoop:
     DEC AX              ; decrement it
     PUS AX              ; push it again
     INC AX              ; re-increment it to get the original value
-    MOV BX, @sHello     ; in order to compare it to the start of sHello
+    MVI BX, @sHello     ; in order to compare it to the start of sHello
     DEC AX, BX          ; which we do here
-    JZ end:             ; break out of loop if end
+    JZI end:            ; break out of loop if end
 
     LDI BX, SP, 2       ; load the second value from the stack
     LOD BX, BX          ; it's a pointer, so dereference the pointer
@@ -285,7 +340,7 @@ helloLoop:
     LDI BX, SP, 2       ; load the second stack value
     INC BX              ; increment it
     STI SP, BX, 2       ; store it again
-    JMP helloLoop:      ; loop
+    JMI helloLoop:      ; loop
 
 end:
     POP AX              ; some cleanup
