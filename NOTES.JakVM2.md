@@ -10,6 +10,7 @@ Registers
 | PC                | Program counter (N/A)           | -- | 16b   |
 | RS                | Status flags (c.f. Flags) (N/A) | -- |  8b   |
 | RF                | Interrupt flags (N/A)           | -- |  8b   |
+| IS                | Interrupt state                 | -- | 88b   |
 
 * AX, BX, SP and SI can be used as general purpose register
 * AX and BX are implicit in the CMP instruction
@@ -18,6 +19,8 @@ Registers
 * RS and RF may be implemented in the same register. RS can only be read by the J** instructions. RF can only be read via the IRF instruction with a mask.
 * RS is modified by various instructions (Arithmetic, Bitwise, IRF, CLI...)
 * RF is modified by external forces and is cleared by the RET instruction
+* the IS register contains the data from all of the registers (sans RF). This is used to restore data via the RET instruction after an interrupt
+* the IS register is filled with data whenever an interrupt occurs. It is essentially a shadow of all of the other registers
 
 Flags
 =====
@@ -146,7 +149,7 @@ Everything is (should be?) big endian.
 |---------------|----------------|------------|
 | IRF           | 0b 11 10 00 11 | 0bVVVVVVVV |
 
-* IRF: check interrupt flag register agains immediate mask. Sets Z flag if mask matches the RF register.
+* IRF: check interrupt flag register agains immediate mask. Sets Z flag if any of the flags of the masked RF register are raised
 
 0xE4 - 0xE7 Range, 2 bytes: Shifting Instructions
 
@@ -211,3 +214,89 @@ Everything is (should be?) big endian.
 | DEC           | 0b 11 11 11 RR |
 
 * atomic incrementation and decrementation instructions applied to register
+
+jasm format
+===========
+
+.int                    ; handle interrupts
+    IRF 80h             ; if CPU was just reset
+    JNZ main:           ; start with main
+    IRF 40h             ; external interrupt
+    JIZ refresh:
+    RET                 ; return to where I was. Registers are restored
+refresh:
+    HLT                 ; else return to sleep
+
+.code                   ; main code
+main:                   ;
+    MOV AX, 5           ; init loop counter to 5
+loop:
+    MOV BX, $cZero      ; load value from data section cZero into BX
+    PUS AX              ; push counter on stack
+    ADD AX, BX          ; add cZero to counter
+    MOV BX, FFh         ; move value 255 to BX
+    STO BX, AX          ; store digit character at address 255
+    POP AX              ; restore counter
+    DEC AX              ; decrement
+    JIZ lf:             ; if counter is zero, jump to line feed
+    JMP loop:           ; else, jump back to loop
+
+lf:
+    MOV AX, 20h         ; move value 32 (space) to AX
+    STO BX, AX          ; store space at 255
+
+xor:
+    MOV BX, 400h
+    LOD AX, BX
+    MOV BX, $wAwesome
+    XOR AX, BX
+    JNZ hello:
+    MOV BX, 400h
+    LOD AX, BX
+    INC AX
+    STO BX, AX
+    JMP xor:
+
+hello:
+    MOV AX, 100h        ; store address 0x100 on the stack
+    PUS AX
+
+    MOV AX, @sHello     ; init AX to point at the start of sHello
+    PUS AX              ; store it on the stack
+    MOV BX, 12          ; add 12 to AX to point at the end of sHell
+    ADD AX, BX
+    PUS AX              ; push that on the stack
+
+helloLoop:
+    POP AX              ; pop the end pointer
+    DEC AX              ; decrement it
+    PUS AX              ; push it again
+    INC AX              ; re-increment it to get the original value
+    MOV BX, @sHello     ; in order to compare it to the start of sHello
+    DEC AX, BX          ; which we do here
+    JZ end:             ; break out of loop if end
+
+    LDI BX, SP, 2       ; load the second value from the stack
+    LOD BX, BX          ; it's a pointer, so dereference the pointer
+    LDI AX, SP, 4       ; load the third value from the stack
+    STO AX, BX          ; store BX at that address
+    INC AX              ; increment AX
+    STI SP, AX, 4       ; and store it as the third stack value
+    LDI BX, SP, 2       ; load the second stack value
+    INC BX              ; increment it
+    STI SP, BX, 2       ; store it again
+    JMP helloLoop:      ; loop
+
+end:
+    POP AX              ; some cleanup
+    POP AX
+    POP AX
+    HLT                 ; halt processor
+
+.data
+1   cZero       '0'
+2   wAwesome    2048
+12 sHello       'Hello, you!' 10
+8   aWords      1 64 256 1024
+4   aChars      01h 10h AAh FFh
+6   aHexWords   0001h 0010h FFFFh
