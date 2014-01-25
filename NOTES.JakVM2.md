@@ -3,24 +3,25 @@ Registers
 
 | Name              | Description                     | AD | Width |
 |-------------------|---------------------------------|----|-------|
-| AX                | Accumulator                     | 00 | 16b   |
-| BX                | Accumulator                     | 01 | 16b   |
-| CX                | Accumulator                     | 10 | 16b   |
-| SP                | Stack pointer                   | 11 | 16b   |
-| PC                | Program counter (N/A)           | -- | 16b   |
-| RS                | Status flags (c.f. Flags) (N/A) | -- |  8b   |
-| RF                | Interrupt flags (N/A)           | -- |  8b   |
-| IS                | Interrupt state                 | -- | 88b   |
+| AX                | Accumulator                     | 00 |  16b  |
+| BX                | Accumulator                     | 01 |  16b  |
+| CX                | Accumulator                     | 10 |  16b  |
+| SP                | Stack pointer                   | 11 |  16b  |
+| PC                | Program counter (N/A)           | -- |  16b  |
+| RS                | Status flags (c.f. Flags) (N/A) | -- |   8b  |
+| RF                | Interrupt flags (N/A)           | -- |   8b  |
+| IS                | Interrupt state                 | -- | 104b  |
 
 * AX, BX, SP and CX can be used as general purpose register
 * AX and BX are implicit in the CMP instruction
 * SP is implicit in the PUS and POP instructions. PUS auto post-decrements SP, POP auto pre-increments SI.
-* PC cannot be read. It can only be modified via the J** instructions
-* RS and RF may be implemented in the same register. RS can only be read by the J** instructions. RF can only be read via the IRF instruction with a mask.
+* PC cannot be read. It can only be modified via the Jxx instructions
+* RS and RF may be implemented in the same register. RS can only be read by the Jxx instructions. RF can only be read via the IRF instruction with a mask.
 * RS is modified by various instructions (Arithmetic, Bitwise, IRF, CLI...)
-* RF is modified by external forces and is cleared by the RET instruction
+* RF is modified by external forces and is cleared by the RET instruction or by a call to ENI
 * the IS register contains the data from all of the registers (sans RF). This is used to restore data via the RET instruction after an interrupt
 * the IS register is filled with data whenever an interrupt occurs. It is essentially a shadow of all of the other registers
+* the size of the IS register is 16 * 4 (AX,BX,CX,SP) + 16 (PC) + 16 (RS, RF) + 8 (return address) bits = 104 bits
 
 Flags
 =====
@@ -30,9 +31,9 @@ Flags
 | Z             | Zero flag         |
 | C             | Overflow/Carry    |
 | S             | Sign              |
-| I             | Interrupt request |
+| ~~I~~         | ~~Interrupt request~~ |
 
-The layout is: `Z``C``S``0``0``0``0``I`
+The layout is: `Z``C``S``0``0``0``0``0`
 
 Interrupt flags
 ===============
@@ -88,10 +89,10 @@ Everything is (should be?) big endian.
 
 * NOP: does nothing
 * INT: software interrupt
-* ENI: enable interrupts
+* ENI: enable interrupts. Resets interrupt flags
 * DEI: disable interrupts
 * RST: reset
-* HLT: sleep (stop clock)
+* HLT: sleep (stop clock). Clears RF register
 * CMP: compare AX and BX and set Z flag if they are identical
 * RET: return from interrupt handler. Clears RF register.
 * PUS: stack push
@@ -181,7 +182,7 @@ Everything is (should be?) big endian.
 | JOI           | 0b 11 10 11 10 | 0bVVVVVVVV |
 | JUI           | 0b 11 10 11 11 | 0bVVVVVVVV |
 
-* CLI: clears flags according to mask from second byte (order is ZCS, I flag cannot be cleared)
+* CLI: clears flags according to mask from second byte (order is ZCS~~, I flag cannot be cleared~~)
 * Others: immediate versions of jump instructions
 
 0xF0 - 0xF3 Range, 2 bytes: Indexed Memory Instructions
@@ -273,14 +274,16 @@ jasm format
 
 .int                    ; handle interrupts
     IRF 80h             ; if CPU was just reset
-    MVI AX, main:       ; start with main
-    JNZ AX
-
+    JNI gotoMain:
     IRF 40h             ; external interrupt
     JIZ refresh:
     RET                 ; return to where I was. Registers are restored
 refresh:
     HLT                 ; else return to sleep
+gotoMain:
+    MVI AX, main:       ; start with main
+    ENI                 ; clear flags. Reset takes precedence
+    JMP AX              ; execute jump
 
 .code                   ; main code
 main:                   ;
@@ -351,7 +354,7 @@ end:
 .data
 1   cZero       '0'
 2   wAwesome    2048
-12 sHello       'Hello, you!' 10
-8   aWords      1 64 256 1024
-4   aChars      01h 10h AAh FFh
-6   aHexWords   0001h 0010h FFFFh
+12 sHello       'Hello, you!', 10
+8   aWords      1, 64, 256, 1024
+4   aChars      01h, 10h, AAh, FFh
+6   aHexWords   0001h, 0010h, FFFFh
