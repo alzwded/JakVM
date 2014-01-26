@@ -59,6 +59,7 @@ Instruction cheat sheet
 jasm format
 ===========
 
+```
 .int                    ; handle interrupts
     IRF 80h             ; if CPU was just reset
     JNI gotoMain:
@@ -145,3 +146,4 @@ end:
 8   aWords      1, 64, 256, 1024
 4   aChars      01h, 10h, AAh, FFh
 6   aHexWords   0001h, 0010h, FFFFh
+```
