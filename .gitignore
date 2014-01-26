@@ -17,7 +17,7 @@
 *.app
 
 # custom
-grammar-generator/parser.tab.*
-grammar-generator/parser.output
-grammar-generator/lex.yy.c
-grammar-generator/generator
+old/grammar-generator/parser.tab.*
+old/grammar-generator/parser.output
+old/grammar-generator/lex.yy.c
+old/grammar-generator/generator
