@@ -147,3 +147,71 @@ end:
 4   aChars      01h, 10h, AAh, FFh
 6   aHexWords   0001h, 0010h, FFFFh
 ```
+
+ASM implementation
+==================
+
+```C
+token_t getNextToken(i_t* instruction, char* first, char* second, char* third);
+token_t getNextToken(int* num, char* first, char* second, char* third)
+{
+    // LJP :label:
+    //      num = find(mnemonics, "LJP");
+    //      first = ":label:";
+    //      return INSTRUCTION;
+    // 4 wNum 1024, 2048
+    //      num = 2;
+    //      first = "wNum";
+    //      second = "1024, 2048";
+    //      return DATA;
+}
+
+typedef enum { INSTRUCTION, LABEL, CODE_SEC, DATA_SEC, INT_SEC, DATA, DATALISTITEM, UNKNOWN } token_t;
+typedef enum { JMP, MOV, MVI, ... etc } i_t;
+
+example() {
+    i_t i;
+    char first[32], second[32], third[32];
+    short num;
+    switch(state) {
+    case codeSection:
+        token_t t = getNextToken(&i, first, second, third);
+        switch(t) {
+        case INSTRUCTION:
+            addInstruction(i, first, second, third);
+            break;
+        case LABEL:
+            beginLabel(first);
+            break;
+        case DATA_SECTION:
+            state = DATA_SECTION;
+            //startNewDataSection();
+            break;
+        }
+        break;
+    case dataSection:
+        token_t t = getNextToken(&num, first, second, third);
+        switch(t) {
+        case DATA:
+            beginNewData(num, first);
+            char* p = strok(second, ",");
+            while(p) {
+                appendDataItem(p);
+                p = strok(NULL, ",");
+            }
+            endData();
+            break;
+        case CODE_SEC:    
+            state = t;
+            break;
+        }
+    }
+}
+
+typedef struct {
+    enum { CODE, DATA } type;
+    short size; // opcode size for I, data length for D
+    char* label; // optional label for I, label for D
+    unsigned char* data; // opcode for I, data for D
+} node_t;
+```
