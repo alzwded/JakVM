@@ -24,8 +24,8 @@ Display
 
 | description           | range             | size  | count          |
 |-----------------------|-------------------|-------|----------------|
-| Pallettes             | 0xC000 - 0xCFFF   | 4096B | 128 x 32       |
-| Block descriptors     | 0xD000 - 0xD7FF   | 2048B | 64 x 32        |
+| Block descriptors     | 0xC000 - 0xCFFF   | 4096B | 128 x 32       |
+| Pallettes             | 0xD000 - 0xD7FF   | 2048B | 64 x 32        |
 | Background            | 0xD800 - 0xDFFF   | 2048B | 1024 x 2       |
 | Sprites               | 0xE000 - 0xE7FF   | 2040B | 60 x 34        |
 
