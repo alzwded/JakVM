@@ -156,7 +156,7 @@ Everything is (should be?) big endian.
 | reserved      | 0b 11 01 1? ?? |            |
 
 * CAL: pushes PC+3 on the stack and long jumps to ADDR, 3 bytes
-* RCL: sets the stack to SP + VVVV, pops a value and sets PC to that, one byte
+* RCL: pops V value off the stack, then pops another value and sets PC to that, one byte
 * CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
 * RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
 

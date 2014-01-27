@@ -30,7 +30,7 @@ SUB AX, 16          SUBstract
 MUL AX, CX          MULtiply
 DIV CX, 4           DIVide
 CAL :memcmp:        CALl
-RCL                 ReCalL
+RCL 8               ReCalL
 CAR AX, :routine:   CAll Register
 RCR AX              ReCall Register
 IRF 80h             InterRupt Flags
