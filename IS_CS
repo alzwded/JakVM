@@ -29,9 +29,9 @@ ADD AX, BX          ADD
 SUB AX, 16          SUBstract
 MUL AX, CX          MULtiply
 DIV CX, 4           DIVide
-CAL 400h            CALl
-RCL 200h            ReCalL
-CAR AX              CAll Register
+CAL :memcmp:        CALl
+RCL                 ReCalL
+CAR AX, :routine:   CAll Register
 RCR AX              ReCall Register
 IRF 80h             InterRupt Flags
 ROL AX, BX          ROtate Left

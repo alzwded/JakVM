@@ -68,6 +68,7 @@ Everything is (should be?) big endian.
 | DEI         | 0b 00 00 00 11 |              |                |
 | RST         | 0b 00 00 01 00 |              |                |
 | HLT         | 0b 00 00 01 01 |              |                |
+| reserved    | 0b 00 00 01 1? |              |                |
 | CMP         | 0b 00 00 10 00 |              |                |
 | RET         | 0b 00 00 10 01 |              |                |
 | CMU         | 0b 00 00 10 10 |              |                |
@@ -110,13 +111,30 @@ Everything is (should be?) big endian.
 * LOD: load data from address taken from LSB register to MSB register
 * STO: store data from LSB register to address taken from MSB register
 
-0x80 - 0xBF Range, single byte: Bitwise Instructions
+0x80 - 0x87 Range, 2 bytes: Arithmetic Instructions
+
+| Instruction   | Code           | 2nd B      |
+|---------------|----------------|------------|
+| ADD           | 0b 10 00 00 00 | 0b0000RRRR |
+| SUB           | 0b 10 00 00 01 | 0b0000RRRR |
+| MUL           | 0b 10 00 00 10 | 0b0000RRRR |
+| DIV           | 0b 10 00 00 11 | 0b0000RRRR |
+| ADD           | 0b 10 00 00 00 | 0bVVVVRR?? |
+| SUB           | 0b 10 00 00 01 | 0bVVVVRR?? |
+| MUL           | 0b 10 00 00 10 | 0bVVVVRR?? |
+| DIV           | 0b 10 00 00 11 | 0bVVVVRR?? |
+| reserved      | 0b 10 00 01 ?? |            |
+
+* First set add value from LSB register to MSB register (VVVV=0)
+* Second set add imediate value to register (VVVV!=0)
+
+
+0x88 - 0xBF Range, single byte: Bitwise Instructions
 
 | Instruction   | Code                | Range       |
 |---------------|---------------------|-------------|
-| NEG           | 0b 10 00 00 RR      | 0x80 - 0x83 |
-| NOT           | 0b 10 00 01 RR      | 0x84 - 0x87 |
-| reserved      | 0b 10 00 1? ??      | 0x88 - 0x8F |
+| NEG           | 0b 10 00 10 RR      | 0x88 - 0x8B |
+| NOT           | 0b 10 00 11 RR      | 0x8C - 0x8F |
 | AND           | 0b 10 01 RR RR      | 0x90 - 0x9F |
 | IOR           | 0b 10 10 RR RR      | 0xA0 - 0xAF |
 | XOR           | 0b 10 11 RR RR      | 0xB0 - 0xBF |
@@ -127,45 +145,27 @@ Everything is (should be?) big endian.
 * IOR: bitwsie inclusive or
 * XOR: bitwise exclusive or
 
-0xC0 - 0xC3 Range, 2 bytes: Arithmetic Instructions
+0xC0 - 0xDF Range, 3 bytes: subroutine instructions
 
-| Instruction   | Code           | 2nd B      |
+| Instruction   | Code           | 2nd & 3rd  |
 |---------------|----------------|------------|
-| ADD           | 0b 11 00 00 00 | 0b0000RRRR |
-| SUB           | 0b 11 00 00 01 | 0b0000RRRR |
-| MUL           | 0b 11 00 00 10 | 0b0000RRRR |
-| DIV           | 0b 11 00 00 11 | 0b0000RRRR |
-| ADD           | 0b 11 00 00 00 | 0bVVVVRR?? |
-| SUB           | 0b 11 00 00 01 | 0bVVVVRR?? |
-| MUL           | 0b 11 00 00 10 | 0bVVVVRR?? |
-| DIV           | 0b 11 00 00 11 | 0bVVVVRR?? |
-
-* First set add value from LSB register to MSB register (VVVV=0)
-* Second set add imediate value to register (VVVV!=0)
-
-0xD0 - 0xD3 Range, 3 bytes: subroutine instructions
-
-| Instruction   | Code           | 2nd & 3rd
-|---------------|----------------|------------|
+| RCL           | 0b 11 00 VV VV |            |
 | CAL           | 0b 11 01 00 00 | 0xADDR     |
-| RCL           | 0b 11 01 00 01 | 0xADDR     |
-| CAR           | 0b 11 01 00 00 | 0xRVVV     |
-| RCR           | 0b 11 01 00 01 | 0xRVVV     |
+| RCR           | 0b 11 01 00 RR |            |
+| CAR           | 0b 11 01 01 RR | 0xADDR     |
+| reserved      | 0b 11 01 1? ?? |            |
 
-* ~~CAL: pushes the registers on the stack in the following order: PC, AX, BX, CX, SP and proceeds to set PC to ADDR~~
-* ~~RCL: loads the value from ADDR into SP and proceeds to pop CX, BX, AX, PC. This instruction modifies the PC. Calling op-code F3 FF FF considers the stack to be the current value.~~
-* ~~CAR: same as CAL, but jumps to the address specified in register R + offset VVV~~
-* ~~RCR: same as RCL but stack is taken from R + offset~~
-
-* CAL: pushes PC and SP on the stack. Then sets PC to ADDR.
-* RCL: sets SP to ADDR. Pops a value and sets PC to that.
-* CAR: same as CAL, but jumps to the address specified in register R + offset VVV
-* RCR: same as RCL, but sets SP to the address in register R + offset VVV
+* CAL: pushes PC+3 on the stack and long jumps to ADDR, 3 bytes
+* RCL: sets the stack to SP + VVVV, pops a value and sets PC to that, one byte
+* CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
+* RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
 
 0xE0 - 0xE3 Range: Interrupt checking
 
 | Instruction   | Code           | 2nd B      |
 |---------------|----------------|------------|
+| reserved      | 0b 11 10 00 0? |            |
+| reserved      | 0b 11 10 00 10 |            |
 | IRF           | 0b 11 10 00 11 | 0bVVVVVVVV |
 
 * IRF: check interrupt flag register agains immediate mask. Sets Z flag if any of the flags of the masked RF register are raised
