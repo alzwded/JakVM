@@ -1,7 +1,16 @@
+; more notes on how to print
+; I will need a :printText: routine that uses the global $nextBuffer
+;   to locate the correct ascii character block and place it at the
+;   current screen location with the first pallette
+; then, a :updateDisplay: routine that performs a SWP and switches
+;   $nextBuffer to the other one
+; then, maybe a scroll-window function that carry shifts bits accross
+;   all currently displayed blocks. That would be fucking awesome
+
 .data
 14 hello 'Hello, World!', 0
  9 chars 'Helo, rd!'
-;9 blocks 0, 1, 2, 3, 4, 5, 6, 7, 8
+ 9 blocks 0, 1, 2, 3, 4, 5, 6, 7, 8
 
 .code
 
