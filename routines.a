@@ -1,0 +1,201 @@
+.code
+;   memcmp routine
+;       signed ordering of two arrays
+;   size:   
+;       33 bytes
+;   stack:
+;       requires 6 bytes of space on the stack
+;   input:
+;       AX      pointer to first array
+;       BX      pointer to second array
+;       CX      length
+;   output:
+;       AX      -1 if the first array comes before the second
+;                0 if arrays are equal
+;                1 if the second array comes before the first
+:memcmp:
+    PUS AX                          ; 1 store A1
+    PUS BX                          ; 1 store A2
+    PUS CX                          ; 1 store count
+    AND CX, CX                      ; 1 check if count == 0
+    JZI :memcmp_return_eq:          ; 2 if so, return A1 == A2
+    LOD AX, AX                      ; 1 deref A1
+    LOD BX, BX                      ; 1 deref A2
+    CMU                             ; 1 compare the two
+    JNI :memcmp_compare:            ; 2 if they are not equal, goto check
+    POP CX                          ; 1 restore count
+    DEC CX                          ; 1 decrement count
+    POP BX                          ; 1 restore A2
+    INC BX                          ; 1 increment A2
+    POP AX                          ; 1 restore A1
+    INC AX                          ; 1 increment A1
+    JMI :memcmp:                    ; 2 loop
+:memcmp_compare:
+    JLI :memcmp_return_ax:          ; 2 A1 is smaller
+    XOR AX, AX                      ; 1 A2 is smaller, set AX to 1
+    INC AX                          ; 1
+    JMI :memcmp_return:             ; 2 jump to end
+:memcmp_return_ax:
+    XOR AX, AX                      ; 1 A1 is smaller, set AX to FFFFh
+    DEC AX                          ; 1
+    JMI :memcmp_return:             ; 2 jump to end
+:memcmp_return_eq:
+    XOR AX, AX                      ; 1 they are equal, set AX to 0
+:memcmp_return:
+    RCR SP, 6                       ; 3 set stack to SP + 6 because we had
+                                    ;   pushed A1, A2 and count there
+
+;   strcmp routine
+;       unsigned alphabetic ordering of two null terminated strings
+;   size:   
+;       26 bytes
+;   stack:
+;       4 bytes are needed on the stack
+;   input:
+;       AX      pointer to s1
+;       BX      pointer to s2
+;   output:
+;       AX      -1 if the first array comes before the second
+;                0 if arrays are equal
+;                1 if the second array comes before the first
+:strcmp:
+    PUS AX                      ; 1 store ptr to s1
+    PUS BX                      ; 1 store s2
+    LOD AX, AX                  ; 1 AX = *s1
+    LOD BX, BX                  ; 1 BX = *s2
+    CMP                         ; 1 if(*s1 != *s2)
+    JNI :strcmp_compare:        ; 2     compare(*s1, *s2)
+    AND AX, AX                  ; 1 if(!*s1)
+    JZI :strcmp_return:         ; 1     return 0
+    POP BX                      ; 1 BX = s2
+    INC BX                      ; 1 ++s2
+    POP AX                      ; 1 AX = s1
+    INC AX                      ; 1 ++s1
+    JMI :strcmp:                ; 2 loop
+:strcmp_compare:
+    JLI :strcmp_return_s1:      ; 2 if(*s1 < *s2)
+    AND AX, AX                  ; 1 AX = 0
+    INC AX                      ; 1 ++AX => 1
+    JMI :strcmp_return:         ; 2 return
+:strcmp_return_s1:
+    AND AX, AX                  ; 1 AX = 0
+    DEC AX                      ; 1 --AX => -1
+:strcmp_return:
+    RCR SP, 4                   ; 3 return SP + 4 because we had pushed s1 and s2 earlier
+
+;   strcmp2 routine
+;       unsigned alphabetic ordering of two null terminated strings
+;   size:   
+;       28 bytes
+;   stack:
+;       4 bytes are needed on the stack
+;   input:
+;       AX      pointer to s1
+;       BX      pointer to s2
+;   output:
+;       AX      -(i+1) if the first array comes before the second, i being the position where the strings differ
+;                0 if arrays are equal
+;                i + 1 if the second array comes before the first, i being the position where they differ
+:strcmp2:
+    AND CX, CX                  ; 1 CX = 1
+    INC CX                      ; 1
+:strcmp2_loop:
+    PUS AX                      ; 1 store s1
+    PUS BX                      ; 1 store s2
+    LOD AX, AX                  ; 1 AX = *s1
+    LOD BX, BX                  ; 1 BX = *s2
+    CMP                         ; 1 if(*s1 != *s2)
+    JNI :strcmp2_compare:       ; 2     compare(*s1, *s2)
+    AND AX, AX                  ; 1 if(!*s1)
+    JZI :strcmp2_return:        ; 1     return 0
+    POP BX                      ; 1 BX = s2
+    INC BX                      ; 1 ++s2
+    POP AX                      ; 1 AX = s1
+    INC AX                      ; 1 ++s1
+    INC CX                      ; 1 ++CX
+    JMI :strcmp2_loop:          ; 2 loop
+:strcmp2_compare:
+    JLI :strcmp2_return_s1:     ; 2 if(*s1 < *s2) goto return_s1
+    MOV AX, CX                  ; 1 return -CX
+    NEG AX                      ; 1
+    JMI :strcmp2_return:        ; 2
+:strcmp2_return_s1:
+    MOV AX, CX                  ; 1 return CX
+:strcmp2_return:
+    RCR SP, 4                   ; 3 return SP + 4 because we had pushed s1 and s2 earlier
+
+;   strlen routine
+;       unsigned alphabetic ordering of two null terminated strings
+;   size:   
+;       14 bytes
+;   stack:
+;       no stack usage
+;   input:
+;       AX      pointer to s1
+;   output:
+;       AX      length of string
+:strlen:
+    MOV CX, AX              ; CX = s1
+    MOV BX, AX              ; BX = s1
+    AND AX, AX              ; AX = 0
+:strlen_loop:
+    LOD CX, CX              ; if(!*s1) return AX
+    JZI :strlen_return:     ;
+    MOV CX, BX              ; s1++
+    INC CX
+    INC AX                  ; len++
+    JMI :strlen_loop:
+:strlen_return:
+    RCR SP
+
+;   strchr routine
+;       find a character in a null terminated string
+;   size:   
+;       19 bytes
+;   stack:
+;       2 bytes
+;   input:
+;       AX      pointer to s1
+;       BX      character to find
+;   output:
+;       AX      -1 if not found, i if found
+:strchr:
+    AND CX, CX                  ; i = 0
+:strchr_loop:
+    PUS AX
+    LOD AX, AX
+    CMP                         ; if *s1 == c return i
+    JZI :return_found:
+    AND AX, AX                  ; if !*s1 return -1
+    JZI :return_not_found:
+    POP AX
+    INC AX                      ; ++s1
+    INC CX                      ; ++i
+    JMI :strchr_loop:           ; loop
+:return_not_found:
+    AND CX, CX                  ; i = -1
+    DEC CX
+:return_found:
+    RCR SP, 2                   ; return SP + 2 because we had pushed AX
+
+;   strcpy routine
+;   size:
+;       12 bytes
+;   stack:
+;       no stack usage
+;   input:
+;       AX      pointer to destination
+;       BX      pointer to source
+;   output:
+;       none
+:strcpy:
+    MOV CX, BX                  ; CX = src
+:strcpy_loop:
+    MOV BX, CX                  ; BX = *src++
+    INC CX
+    LOD BX, BX
+    STO AX, BX                  ; *dest++ = BX
+    INC AX
+    AND BX, BX                  ; if(BX) goto strcpy_loop 
+    JNI :strcpy_loop:
+    RCR SP                      ; return

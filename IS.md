@@ -70,7 +70,8 @@ Everything is (should be?) big endian.
 | HLT         | 0b 00 00 01 01 |              |                |
 | CMP         | 0b 00 00 10 00 |              |                |
 | RET         | 0b 00 00 10 01 |              |                |
-| reserved    | 0b 00 00 10 1? | 0x0A - 0x0B  |                |
+| CMU         | 0b 00 00 10 10 |              |                |
+| reserved    | 0b 00 00 10 11 |              |                |
 | reserved    | 0b 00 00 11 ?? | 0x0C - 0x0F  |                |
 | PUS         | 0b 00 01 00 RR | 0x10 - 0x13  |                |
 | POP         | 0b 00 01 01 RR | 0x14 - 0x17  |                |
@@ -94,8 +95,9 @@ Everything is (should be?) big endian.
 * DEI: disable interrupts
 * RST: reset
 * HLT: sleep (stop clock). Clears RF register
-* CMP: compare AX and BX and set Z flag if they are identical
+* CMP: compare AX and BX and set Z flag if they are identical, set the S flag if AX is smaller than BX, signed
 * RET: return from interrupt handler. Clears RF register.
+* CMU: same as CMP, but unsigned
 * PUS: stack push
 * POP: stack pop
 * LJP: long jump. It is a three byte instruction that receives an absolute address.
@@ -119,7 +121,7 @@ Everything is (should be?) big endian.
 | IOR           | 0b 10 10 RR RR      | 0xA0 - 0xAF |
 | XOR           | 0b 10 11 RR RR      | 0xB0 - 0xBF |
 
-* NEG: change sign
+* NEG: change sign / 2's complement
 * NOT: bitwise not
 * AND: bitwise AND
 * IOR: bitwsie inclusive or
