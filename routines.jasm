@@ -94,7 +94,7 @@
     POP CX
     JMP :memset:
 :memset_return:
-    RCR SP
+    RCR SP, 2
 
 ;   strcmp routine
 ;       unsigned alphabetic ordering of two null terminated strings
