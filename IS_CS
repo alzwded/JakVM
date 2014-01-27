@@ -6,6 +6,7 @@ RST                 ReSeT
 HLT                 HaLT
 CMP                 CoMPare
 RET                 RETurn
+CMU                 CoMpare Unsigned
 PUS AX              PUSh
 POP AX              POP
 LJP 2249h           Long JumP
