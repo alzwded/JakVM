@@ -4,6 +4,7 @@ ENI                 ENable Interrupts
 DEI                 DisablE Interrupts
 RST                 ReSeT
 HLT                 HaLT
+SWP                 SWaP
 CMP                 CoMPare
 RET                 RETurn
 CMU                 CoMpare Unsigned

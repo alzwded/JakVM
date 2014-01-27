@@ -30,7 +30,7 @@ syn keyword jasmInstr	mov mul mvi
 syn keyword jasmInstr	neg nop not
 syn keyword jasmInstr	pop pus
 syn keyword jasmInstr	rcl rcr ret rol ror rst
-syn keyword jasmInstr	shl shr sri sti sto sub
+syn keyword jasmInstr	shl shr sri sti sto sub swp
 syn keyword jasmInstr	xor
 "syn keyword jasmOperator
 

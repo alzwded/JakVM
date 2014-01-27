@@ -68,7 +68,8 @@ Everything is (should be?) big endian.
 | DEI         | 0b 00 00 00 11 |              |                |
 | RST         | 0b 00 00 01 00 |              |                |
 | HLT         | 0b 00 00 01 01 |              |                |
-| reserved    | 0b 00 00 01 1? |              |                |
+| SWP         | 0b 00 00 01 10 |              |                |
+| reserved    | 0b 00 00 01 11 |              |                |
 | CMP         | 0b 00 00 10 00 |              |                |
 | RET         | 0b 00 00 10 01 |              |                |
 | CMU         | 0b 00 00 10 10 |              |                |
@@ -96,6 +97,7 @@ Everything is (should be?) big endian.
 * DEI: disable interrupts
 * RST: reset
 * HLT: sleep (stop clock). Clears RF register
+* SWP: swap video buffers
 * CMP: compare AX and BX and set Z flag if they are identical, set the S flag if AX is smaller than BX, signed
 * RET: return from interrupt handler. Clears RF register.
 * CMU: same as CMP, but unsigned

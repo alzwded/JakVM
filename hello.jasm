@@ -1,0 +1,42 @@
+.data
+14 hello 'Hello, World!', 0
+ 9 chars 'Helo, rd!'
+;9 blocks 0, 1, 2, 3, 4, 5, 6, 7, 8
+
+.code
+
+:hello:
+; pseudocode:
+;       getNextCharacter(@hello)
+;       MOV BX, AX
+;       MVI AX, @chars
+;       strchr()
+;       putNextBlock(currentBufferOffset, AX, pallette0)
+;       SWP
+
+:init_video_memory:
+;   set video blocks        ; implicitly placed at correct memory anyway
+                            ; so code is not used
+    MVI AX, 0C000h
+    MVI BX, @cH
+    MVI CX, 64
+    CAL :memcpy:
+;   set pallette
+    MVI AX, 0D400h
+    MVI BX, @pallette
+    MVI CX, 4
+    CAL :memcpy:
+
+.data
+.at 0C00h
+;  11000110
+;  11000110
+;  11000110
+;  11111110
+;  11111110
+;  11000110
+;  11000110
+;  11000110
+64  cH    050h, 014h, 050h, 014h, 050h, 014h, 055h, 054h, 055h, 054h, 050h, 014h, 050h, 014h, 050h, 014h
+.at 0D400h
+4  pallette 0h, 0FFFFh, 0h, 0h

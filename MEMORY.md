@@ -24,17 +24,17 @@ Display
 
 | description           | range             | size  | count          |
 |-----------------------|-------------------|-------|----------------|
-| Block descriptors     | 0xC000 - 0xCFFF   | 4096B | 128 x 32       |
-| Pallettes             | 0xD000 - 0xD7FF   | 2048B | 64 x 32        |
+| Block descriptors     | 0xC000 - 0xD3FF   | 5120B | 320 x 16       |
+| Pallettes             | 0xD400 - 0xD7FF   | 1024B | 256 x 4        |
 | Sprites               | 0xD800 - 0xD7FF   | 2040B | 60 x 34        |
 | Background1           | 0xE000 - 0xE7FF   | 2048B | 1024 x 2       |
 | Background2           | 0xD800 - 0xEFFF   | 2048B | 1024 x 2       |
 
 The screen background is split into 1024 8x8 blocks (2 indexes). A block index and a pallette index. That's 2048.
 
-A block is 8x8x4 (256 bits, 32 bytes). The 4 bits are indexes in a color pallette.
+A block is 8x8x2 (128 bits, 32 bytes). The 2 bits are indexes in a color pallette. (0..3)
 
-A pallette is 32 bytes (256 bits) and features 4 colours from a maximum of... 256.
+A pallette is 16 bytes (128 bits) and features 4 colours. (colours are 16 bit, so 4x16bits = 64bits = 4 bytes)
 
 Sprites are composed of a screen location (x 1B, y 1B), a pallette index (2B) and a block descriptor (32 bytes). The location refers to their top-left pixel. The size is 34 bytes.
 

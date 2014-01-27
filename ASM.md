@@ -66,6 +66,15 @@ Data statements can be referenced in .code and .int sections like so:
     LOD AX, AX          ; AX = 1024
 ```
 
+You can use the .at directive to set the start address of a block. For example
+```
+.data
+.at 0C00h
+4 pallette1 0h, 0A100h, 0FF00h, 03Eh    ; store pallette directly in video memory
+```
+
+These .at directives are valid throughout the file. Be careful when using them. They are usually only useful for padding your object code in order to align with the video memory directly (which comes after all of your code anyway).
+
 Assembling
 ==========
 
