@@ -9,7 +9,7 @@
 ;       AX      pointer to first array
 ;       BX      pointer to second array
 ;       CX      length
-;   output:
+;   return:
 ;       AX      -1 if the first array comes before the second
 ;                0 if arrays are equal
 ;                1 if the second array comes before the first
@@ -18,32 +18,83 @@
     PUS BX                          ; 1 store A2
     PUS CX                          ; 1 store count
     AND CX, CX                      ; 1 check if count == 0
-    JZI :memcmp_return_eq:          ; 2 if so, return A1 == A2
+    JIZ :memcmp_return_eq:          ; 2 if so, return A1 == A2
     LOD AX, AX                      ; 1 deref A1
     LOD BX, BX                      ; 1 deref A2
     CMU                             ; 1 compare the two
-    JNI :memcmp_compare:            ; 2 if they are not equal, goto check
+    JNZ :memcmp_compare:            ; 2 if they are not equal, goto check
     POP CX                          ; 1 restore count
     DEC CX                          ; 1 decrement count
     POP BX                          ; 1 restore A2
     INC BX                          ; 1 increment A2
     POP AX                          ; 1 restore A1
     INC AX                          ; 1 increment A1
-    JMI :memcmp:                    ; 2 loop
+    JMP :memcmp:                    ; 2 loop
 :memcmp_compare:
-    JLI :memcmp_return_ax:          ; 2 A1 is smaller
+    JLT :memcmp_return_ax:          ; 2 A1 is smaller
     XOR AX, AX                      ; 1 A2 is smaller, set AX to 1
     INC AX                          ; 1
-    JMI :memcmp_return:             ; 2 jump to end
+    JMP :memcmp_return:             ; 2 jump to end
 :memcmp_return_ax:
     XOR AX, AX                      ; 1 A1 is smaller, set AX to FFFFh
     DEC AX                          ; 1
-    JMI :memcmp_return:             ; 2 jump to end
+    JMP :memcmp_return:             ; 2 jump to end
 :memcmp_return_eq:
     XOR AX, AX                      ; 1 they are equal, set AX to 0
 :memcmp_return:
     RCR SP, 6                       ; 3 set stack to SP + 6 because we had
                                     ;   pushed A1, A2 and count there
+
+;   memcpy routine
+;       copy a block of memory into another
+;   size:
+;       17 bytes
+;   stack:
+;       uses 4 bytes
+;   input:
+;       AX      pointer to destination
+;       BX      pointer to source
+;       CX      count
+;   return:
+;       none
+:memcpy:
+    PUS CX                  ; save count and source pointer
+    PUS BX
+    AND CX, CX              ; return if we have processed count bytes
+    JIZ :memcpy_return:
+    LOD BX, BX              ; *dest++ = *src++
+    STO AX, BX
+    POP BX
+    INC BX
+    INC AX
+    POP CX
+    DEC CX                  ; count--
+    JMP :memcpy:
+:memcpy_return:
+    RCR SP, 4
+
+;   memset routine
+;       fill a memory block with count bytes
+;   size:
+;       12 bytes
+;   stack:
+;       2 bytes
+;   input:
+;       AX      pointer to the memory block
+;       BX      the character to fill with
+;       CX      count bytes
+;   return:
+;       none
+:memset:
+    PUS CX
+    AND CX, CX
+    JIZ :memset_return:
+    STO AX, BX
+    INC AX
+    POP CX
+    JMP :memset:
+:memset_return:
+    RCR SP
 
 ;   strcmp routine
 ;       unsigned alphabetic ordering of two null terminated strings
@@ -54,7 +105,7 @@
 ;   input:
 ;       AX      pointer to s1
 ;       BX      pointer to s2
-;   output:
+;   return:
 ;       AX      -1 if the first array comes before the second
 ;                0 if arrays are equal
 ;                1 if the second array comes before the first
@@ -64,19 +115,19 @@
     LOD AX, AX                  ; 1 AX = *s1
     LOD BX, BX                  ; 1 BX = *s2
     CMP                         ; 1 if(*s1 != *s2)
-    JNI :strcmp_compare:        ; 2     compare(*s1, *s2)
+    JNZ :strcmp_compare:        ; 2     compare(*s1, *s2)
     AND AX, AX                  ; 1 if(!*s1)
-    JZI :strcmp_return:         ; 1     return 0
+    JIZ :strcmp_return:         ; 1     return 0
     POP BX                      ; 1 BX = s2
     INC BX                      ; 1 ++s2
     POP AX                      ; 1 AX = s1
     INC AX                      ; 1 ++s1
-    JMI :strcmp:                ; 2 loop
+    JMP :strcmp:                ; 2 loop
 :strcmp_compare:
-    JLI :strcmp_return_s1:      ; 2 if(*s1 < *s2)
+    JLT :strcmp_return_s1:      ; 2 if(*s1 < *s2)
     AND AX, AX                  ; 1 AX = 0
     INC AX                      ; 1 ++AX => 1
-    JMI :strcmp_return:         ; 2 return
+    JMP :strcmp_return:         ; 2 return
 :strcmp_return_s1:
     AND AX, AX                  ; 1 AX = 0
     DEC AX                      ; 1 --AX => -1
@@ -92,7 +143,7 @@
 ;   input:
 ;       AX      pointer to s1
 ;       BX      pointer to s2
-;   output:
+;   return:
 ;       AX      -(i+1) if the first array comes before the second, i being the position where the strings differ
 ;                0 if arrays are equal
 ;                i + 1 if the second array comes before the first, i being the position where they differ
@@ -105,34 +156,34 @@
     LOD AX, AX                  ; 1 AX = *s1
     LOD BX, BX                  ; 1 BX = *s2
     CMP                         ; 1 if(*s1 != *s2)
-    JNI :strcmp2_compare:       ; 2     compare(*s1, *s2)
+    JNZ :strcmp2_compare:       ; 2     compare(*s1, *s2)
     AND AX, AX                  ; 1 if(!*s1)
-    JZI :strcmp2_return:        ; 1     return 0
+    JIZ :strcmp2_return:        ; 1     return 0
     POP BX                      ; 1 BX = s2
     INC BX                      ; 1 ++s2
     POP AX                      ; 1 AX = s1
     INC AX                      ; 1 ++s1
     INC CX                      ; 1 ++CX
-    JMI :strcmp2_loop:          ; 2 loop
+    JMP :strcmp2_loop:          ; 2 loop
 :strcmp2_compare:
-    JLI :strcmp2_return_s1:     ; 2 if(*s1 < *s2) goto return_s1
+    JLT :strcmp2_return_s1:     ; 2 if(*s1 < *s2) goto return_s1
     MOV AX, CX                  ; 1 return -CX
     NEG AX                      ; 1
-    JMI :strcmp2_return:        ; 2
+    JMP :strcmp2_return:        ; 2
 :strcmp2_return_s1:
     MOV AX, CX                  ; 1 return CX
 :strcmp2_return:
     RCR SP, 4                   ; 3 return SP + 4 because we had pushed s1 and s2 earlier
 
 ;   strlen routine
-;       unsigned alphabetic ordering of two null terminated strings
+;       get the length of a null terminated string
 ;   size:   
 ;       14 bytes
 ;   stack:
 ;       no stack usage
 ;   input:
 ;       AX      pointer to s1
-;   output:
+;   return:
 ;       AX      length of string
 :strlen:
     MOV CX, AX              ; CX = s1
@@ -140,11 +191,11 @@
     AND AX, AX              ; AX = 0
 :strlen_loop:
     LOD CX, CX              ; if(!*s1) return AX
-    JZI :strlen_return:     ;
+    JIZ :strlen_return:
     MOV CX, BX              ; s1++
     INC CX
     INC AX                  ; len++
-    JMI :strlen_loop:
+    JMP :strlen_loop:
 :strlen_return:
     RCR SP
 
@@ -157,7 +208,7 @@
 ;   input:
 ;       AX      pointer to s1
 ;       BX      character to find
-;   output:
+;   return:
 ;       AX      -1 if not found, i if found
 :strchr:
     AND CX, CX                  ; i = 0
@@ -165,13 +216,13 @@
     PUS AX
     LOD AX, AX
     CMP                         ; if *s1 == c return i
-    JZI :return_found:
+    JIZ :return_found:
     AND AX, AX                  ; if !*s1 return -1
-    JZI :return_not_found:
+    JIZ :return_not_found:
     POP AX
     INC AX                      ; ++s1
     INC CX                      ; ++i
-    JMI :strchr_loop:           ; loop
+    JMP :strchr_loop:           ; loop
 :return_not_found:
     AND CX, CX                  ; i = -1
     DEC CX
@@ -186,7 +237,7 @@
 ;   input:
 ;       AX      pointer to destination
 ;       BX      pointer to source
-;   output:
+;   return:
 ;       none
 :strcpy:
     MOV CX, BX                  ; CX = src
@@ -197,5 +248,5 @@
     STO AX, BX                  ; *dest++ = BX
     INC AX
     AND BX, BX                  ; if(BX) goto strcpy_loop 
-    JNI :strcpy_loop:
+    JNZ :strcpy_loop:
     RCR SP                      ; return

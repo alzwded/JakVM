@@ -77,13 +77,13 @@ Everything is (should be?) big endian.
 | POP         | 0b 00 01 01 RR | 0x14 - 0x17  |                |
 | reserved    | 0b 00 01 1? ?? | 0x18 - 0x1E  |                |
 | LJP         | 0b 00 01 11 11 | 0x1F         | 3B jmp         |
-| JMP         | 0b 00 10 01 RR | 0x20 - 0x3F  |                |
-| JIZ         | 0b 00 10 10 RR | 0x20 - 0x3F  |                |
-| JNZ         | 0b 00 10 11 RR | 0x20 - 0x3F  |                |
-| JLT         | 0b 00 11 00 RR | 0x20 - 0x3F  |                |
-| JGE         | 0b 00 11 01 RR | 0x20 - 0x3F  |                |
-| JOF         | 0b 00 11 10 RR | 0x20 - 0x3F  |                |
-| JNF         | 0b 00 11 11 RR | 0x20 - 0x3F  |                |
+| JMR         | 0b 00 10 01 RR | 0x20 - 0x3F  |                |
+| JZR         | 0b 00 10 10 RR | 0x20 - 0x3F  |                |
+| JNR         | 0b 00 10 11 RR | 0x20 - 0x3F  |                |
+| JLR         | 0b 00 11 00 RR | 0x20 - 0x3F  |                |
+| JGR         | 0b 00 11 01 RR | 0x20 - 0x3F  |                |
+| JOR         | 0b 00 11 10 RR | 0x20 - 0x3F  |                |
+| JUR         | 0b 00 11 11 RR | 0x20 - 0x3F  |                |
 | reserved    | 0b 01 00 ?? ?? | 0x40 - 0x4F  |                |
 | MOV         | 0b 01 01 RR RR | 0x50 - 0x5F  |                |
 | LOD         | 0b 01 10 RR RR | 0x60 - 0x6F  |                |
@@ -101,11 +101,11 @@ Everything is (should be?) big endian.
 * PUS: stack push
 * POP: stack pop
 * LJP: long jump. It is a three byte instruction that receives an absolute address.
-* JMP: unconditional branching with offset.
-* JIZ: branch if Z flag is set
-* JLT: jump if S flag is set
-* JOF: jump if C flag is set
-* JNZ, JGE, JNF: negated versions
+* JMR: unconditional branching with offset.
+* JZR: branch if Z flag is set
+* JLR: jump if S flag is set
+* JOR: jump if C flag is set
+* JNR, JGR, JUR: negated versions
 * MOV: move data from one register to another
 * LOD: load data from address taken from LSB register to MSB register
 * STO: store data from LSB register to address taken from MSB register
@@ -192,13 +192,13 @@ Everything is (should be?) big endian.
 | Instruction   | Code           | 2nd B      |
 |---------------|----------------|------------|
 | CLI           | 0b 11 10 10 00 | 0bVVV????? |
-| JMI           | 0b 11 10 10 01 | 0bVVVVVVVV |
-| JZI           | 0b 11 10 10 10 | 0bVVVVVVVV |
-| JNI           | 0b 11 10 10 11 | 0bVVVVVVVV |
-| JLI           | 0b 11 10 11 00 | 0bVVVVVVVV |
-| JGI           | 0b 11 10 11 01 | 0bVVVVVVVV |
-| JOI           | 0b 11 10 11 10 | 0bVVVVVVVV |
-| JUI           | 0b 11 10 11 11 | 0bVVVVVVVV |
+| JMP           | 0b 11 10 10 01 | 0bVVVVVVVV |
+| JIZ           | 0b 11 10 10 10 | 0bVVVVVVVV |
+| JNZ           | 0b 11 10 10 11 | 0bVVVVVVVV |
+| JLT           | 0b 11 10 11 00 | 0bVVVVVVVV |
+| JGE           | 0b 11 10 11 01 | 0bVVVVVVVV |
+| JOF           | 0b 11 10 11 10 | 0bVVVVVVVV |
+| JNF           | 0b 11 10 11 11 | 0bVVVVVVVV |
 
 * CLI: clears flags according to mask from second byte (order is ZCS~~, I flag cannot be cleared~~)
 * Others: immediate versions of jump instructions

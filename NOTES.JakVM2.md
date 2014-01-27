@@ -12,13 +12,13 @@ Instruction cheat sheet
 * PUS AX ; PUSh
 * POP AX ; POP
 * LJP 2249h ; Long JumP
-* JMP AX ; JuMP     ; MVI AX, label: JMP AX
-* JUZ AX ; JUmp if Zero
-* JNZ BX ; Jump if Not Zero
-* JLT CX ; Jump if Less Than
-* JGE SP ; Jump if Greater than or Equal
-* JOF AX ; Jump if OverFlow
-* JNF AX ; Jump if No Overflow
+* JMR AX ; JuMp register    ; MVI AX, label: JMR AX
+* JZR AX: ; Zero
+* JNR AX: ; Nonzero
+* JLR AX: ; Less
+* JGR AX: ; Greater
+* JOR AX: ; Overflow
+* JUR AX: ; Underflow
 * MOV AX, BX ; MOVe
 * LOD AX, AX ; LOaD
 * STO AX, BX ; STOre
@@ -41,13 +41,13 @@ Instruction cheat sheet
 * SHR BX, 15 ; SHift Right
 * ROR CX, AX ; ROtate Right
 * CLI FFh ; CLear flags (I?)
-* JMI -60 ; JuMp to Immediate value
-* JZI loop: ; Zero
-* JNI l: ; Nonzero
-* JLI l: ; Less
-* JGI l: ; Greater
-* JOI l: ; Overflow
-* JUI l: ; Underflow
+* JMP -60 ; JuMp to Immediate value
+* JIZ :label: ; JUmp if Zero
+* JNZ :label: ; Jump if Not Zero
+* JLT :label: ; Jump if Less Than
+* JGE :label: ; Jump if Greater than or Equal
+* JOF :label: ; Jump if OverFlow
+* JNF :label: ; Jump if No Overflow
 * LDI AX, SP, 2 ; LoaD immediate value
 * STI SP, AX, 15 ; STore
 * SRI AX, SP, BX, 3 ; Store value at Register plus Immediate
@@ -62,7 +62,7 @@ jasm format
 ```
 .int                    ; handle interrupts
     IRF 80h             ; if CPU was just reset
-    JNI gotoMain:
+    JNZ gotoMain:
     IRF 40h             ; external interrupt
     JIZ refresh:
     RET                 ; return to where I was. Registers are restored
@@ -71,7 +71,7 @@ refresh:
 gotoMain:
     MVI AX, main:       ; start with main
     ENI                 ; clear flags. Reset takes precedence
-    JMP AX              ; execute jump
+    JMR AX              ; execute jump
 
 .code                   ; main code
 main:                   ;
@@ -84,8 +84,8 @@ loop:
     STO BX, AX          ; store digit character at address 255
     POP AX              ; restore counter
     DEC AX              ; decrement
-    JZI lf:             ; if counter is zero, jump to line feed
-    JMI loop:           ; else, jump back to loop
+    JIZ lf:             ; if counter is zero, jump to line feed
+    JMP loop:           ; else, jump back to loop
 
 lf:
     MVI AX, 20h         ; move value 32 (space) to AX
@@ -96,12 +96,12 @@ xor:
     LOD AX, BX
     MVI BX, $wAwesome
     XOR AX, BX
-    JNI hello:
+    JNZ hello:
     MVI BX, 400h
     LOD AX, BX
     INC AX
     STO BX, AX
-    JMI xor:
+    JMP xor:
 
 hello:
     MVI AX, 100h        ; store address 0x100 on the stack
@@ -120,7 +120,7 @@ helloLoop:
     INC AX              ; re-increment it to get the original value
     MVI BX, @sHello     ; in order to compare it to the start of sHello
     DEC AX, BX          ; which we do here
-    JZI end:            ; break out of loop if end
+    JIZ end:            ; break out of loop if end
 
     LDI BX, SP, 2       ; load the second value from the stack
     LOD BX, BX          ; it's a pointer, so dereference the pointer
@@ -131,7 +131,7 @@ helloLoop:
     LDI BX, SP, 2       ; load the second stack value
     INC BX              ; increment it
     STI SP, BX, 2       ; store it again
-    JMI helloLoop:      ; loop
+    JMP helloLoop:      ; loop
 
 end:
     POP AX              ; some cleanup
