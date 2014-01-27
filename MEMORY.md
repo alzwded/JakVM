@@ -8,8 +8,8 @@ There are 32k addresses. They are split into a number of groups:
 | description   | ranges          | size  | KiB |
 |---------------|-----------------|-------|-----|
 | Code and data | 0x0000 - 0xBFFF | 49152 | 48k |
-| Display I/O   | 0xC000 - 0xE7FF | 10240 | 10k |
-| reserved      | 0xE800 - 0xEFFF |  2048 |  2k |
+| Display I/O   | 0xC000 - 0xEFFF | 12288 | 12k |
+| IO Ctrl       | 0xF000 - 0xFBFF |  3072 |  3k |
 | General I/O   | 0xFC00 - 0xFFFF |  1024 |  1k |
 
 Code and data
@@ -26,8 +26,9 @@ Display
 |-----------------------|-------------------|-------|----------------|
 | Block descriptors     | 0xC000 - 0xCFFF   | 4096B | 128 x 32       |
 | Pallettes             | 0xD000 - 0xD7FF   | 2048B | 64 x 32        |
-| Background            | 0xD800 - 0xDFFF   | 2048B | 1024 x 2       |
-| Sprites               | 0xE000 - 0xE7FF   | 2040B | 60 x 34        |
+| Sprites               | 0xD800 - 0xD7FF   | 2040B | 60 x 34        |
+| Background1           | 0xE000 - 0xE7FF   | 2048B | 1024 x 2       |
+| Background2           | 0xD800 - 0xEFFF   | 2048B | 1024 x 2       |
 
 The screen background is split into 1024 8x8 blocks (2 indexes). A block index and a pallette index. That's 2048.
 
@@ -37,4 +38,4 @@ A pallette is 32 bytes (256 bits) and features 4 colours from a maximum of... 25
 
 Sprites are composed of a screen location (x 1B, y 1B), a pallette index (2B) and a block descriptor (32 bytes). The location refers to their top-left pixel. The size is 34 bytes.
 
-The total size of this block is 10240.
+The total size of this block is 12288.
