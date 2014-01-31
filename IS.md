@@ -186,7 +186,8 @@ Everything is (should be?) big endian.
 | SHR           | 0b 11 10 01 11 | 0bVVVVRR?? |
 
 * ROL, ROR: rotate bits left or right
-* SHL, SHR: shift bits left or right
+* SHL: shift bits left. The LSBs that are shifted in have the value of the Carry flag
+* SHR: shift bits right. The MSBs that are shifted in have the value of the Sign flag. In case of instruction combinations like `MOV AX, 08000h SHR AX, 2` AX will contain E000h because MOV sets the Sign flag. If you want to pad with zeroes, do `MOV AX, 08000h CLI 0FFFFh SHR AX, 2` because CLI will clear the Sign flag after the MOV instruction.
 * The behaviour is defined as for the Arithmetic Instructions
 
 0xE8 - 0xEF Range, 2 bytes: Local Branch Instructions
