@@ -147,7 +147,7 @@ Everything is (should be?) big endian.
 * IOR: bitwsie inclusive or
 * XOR: bitwise exclusive or
 
-0xC0 - 0xDF Range, 3 bytes: subroutine instructions
+0xC0 - 0xDB Range, 3 bytes: subroutine instructions
 
 | Instruction   | Code           | 2nd & 3rd  |
 |---------------|----------------|------------|
@@ -155,12 +155,25 @@ Everything is (should be?) big endian.
 | CAL           | 0b 11 01 00 00 | 0xADDR     |
 | RCR           | 0b 11 01 00 RR |            |
 | CAR           | 0b 11 01 01 RR | 0xADDR     |
-| reserved      | 0b 11 01 1? ?? |            |
+| reserved      | 0b 11 01 10 ?? |            |
 
 * CAL: pushes PC+3 on the stack and long jumps to ADDR, 3 bytes
 * RCL: pops V value off the stack, then pops another value and sets PC to that, one byte
 * CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
 * RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
+
+0xDC - 0xDF Range, 2 bytes: combined shift instructions
+| Instruction   | Code           | 2nd B      |
+|---------------|----------------|------------|
+| S2L           | 0b 11 01 11 00 | 0b000VVVVV |
+| S2R           | 0b 11 01 11 01 | 0b000VVVVV |
+| S2L           | 0b 11 01 11 00 | 0b11111111 |
+| S2R           | 0b 11 01 11 01 | 0b11111111 |
+| SBF           | 0b 11 01 11 1V |            |
+
+* S2L: Shift 2 Left -- treats AX and BX as a single 32 bit register and performs a left shift. It sets the Carry flag if AX overflows. For both S2L and S2R if the argument is 0FFh then the amount of shifting will be read from CX
+* S2R: Shift 2 Right -- treats AX and BX as a single 32 bit register and performs a right shift. For both S2L and S2R if the argument is 0FFh then the amount of shifting will be read from CX
+* SBF: Shift Behaviour Flags -- the first bit sets the behaviour for the SHL and SHR instructions. If 0 (default), the SHR will pad the left bits with the value of the Sign flag, if 1 the SHR instruction will pad the left bits with the Carry flag and SHR will set the Carry flag with the last rotated bit. This instruction is one byte
 
 0xE0 - 0xE3 Range: Interrupt checking
 
@@ -170,6 +183,7 @@ Everything is (should be?) big endian.
 | reserved      | 0b 11 10 00 10 |            |
 | IRF           | 0b 11 10 00 11 | 0bVVVVVVVV |
 
+* SFT: The op code is 
 * IRF: check interrupt flag register agains immediate mask. Sets Z flag if any of the flags of the masked RF register are raised
 
 0xE4 - 0xE7 Range, 2 bytes: Shifting Instructions
