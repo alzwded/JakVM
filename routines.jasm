@@ -2,7 +2,7 @@
 ;   memcmp routine
 ;       signed ordering of two arrays
 ;   size:   
-;       29 bytes
+;       34 bytes
 ;   stack:
 ;       requires 6 bytes of space on the stack
 ;   input:
@@ -21,7 +21,8 @@
     JIZ :memcmp_return_eq:          ; 2 if so, return A1 == A2
     LOD AX, AX                      ; 1 deref A1
     LOD BX, BX                      ; 1 deref A2
-    CMU                             ; 1 compare the two
+    XOR AX, BX
+    SHR AX, 8
     JNZ :memcmp_compare:            ; 2 if they are not equal, goto check
     POP CX                          ; 1 restore count
     DEC CX                          ; 1 decrement count
@@ -75,12 +76,12 @@
 ;   memset routine
 ;       fill a memory block with count bytes
 ;   size:
-;       10 bytes
+;       12 bytes
 ;   stack:
 ;       2 bytes
 ;   input:
 ;       AX      pointer to the memory block
-;       BX      the character to fill with
+;       BX      the character to fill with, left aligned
 ;       CX      count bytes
 ;   return:
 ;       none
@@ -91,14 +92,39 @@
     STO AX, BX
     INC AX
     POP CX
+    DEC CX
     JMP :memset:
 :memset_return:
+    RCL 2
+
+;   memset2 routine
+;       fill a memory block with count bytes
+;   size:
+;       13 bytes
+;   stack:
+;       2 bytes
+;   input:
+;       AX      pointer to the memory block
+;       CX      high byte: the character to fill with
+;               low byte: count bytes
+;   return:
+;       none
+:memset2:
+    PUS CX
+    SHL CX, 8
+    JIZ :memset2_return:
+    POP CX
+    STO AX, CX
+    DEC CX
+    INC AX
+    JMP :memset2:
+:memset2_return:
     RCL 2
 
 ;   strcmp routine
 ;       unsigned alphabetic ordering of two null terminated strings
 ;   size:   
-;       24 bytes
+;       28 bytes
 ;   stack:
 ;       4 bytes are needed on the stack
 ;   input:
@@ -112,7 +138,9 @@
     PUS AX                      ; 1 store ptr to s1
     PUS BX                      ; 1 store s2
     LOD AX, AX                  ; 1 AX = *s1
+    SHR AX, 8
     LOD BX, BX                  ; 1 BX = *s2
+    SHR BX, 8
     CMP                         ; 1 if(*s1 != *s2)
     JNZ :strcmp_compare:        ; 2     compare(*s1, *s2)
     AND AX, AX                  ; 1 if(!*s1)
@@ -124,11 +152,11 @@
     JMP :strcmp:                ; 2 loop
 :strcmp_compare:
     JLT :strcmp_return_s1:      ; 2 if(*s1 < *s2)
-    AND AX, AX                  ; 1 AX = 0
+    XOR AX, AX                  ; 1 AX = 0
     INC AX                      ; 1 ++AX => 1
     RCL 4                       ; 1 return
 :strcmp_return_s1:
-    AND AX, AX                  ; 1 AX = 0
+    XOR AX, AX                  ; 1 AX = 0
     DEC AX                      ; 1 --AX => -1
 :strcmp_return:
     RCL 4                       ; 1 return SP + 4 because we had pushed s1 and s2 earlier
@@ -136,7 +164,7 @@
 ;   strcmp2 routine
 ;       unsigned alphabetic ordering of two null terminated strings
 ;   size:   
-;       26 bytes
+;       30 bytes
 ;   stack:
 ;       4 bytes are needed on the stack
 ;   input:
@@ -153,7 +181,9 @@
     PUS AX                      ; 1 store s1
     PUS BX                      ; 1 store s2
     LOD AX, AX                  ; 1 AX = *s1
+    SHR AX, 8
     LOD BX, BX                  ; 1 BX = *s2
+    SHR BX, 8
     CMP                         ; 1 if(*s1 != *s2)
     JNZ :strcmp2_compare:       ; 2     compare(*s1, *s2)
     AND AX, AX                  ; 1 if(!*s1)
@@ -177,7 +207,7 @@
 ;   strlen routine
 ;       get the length of a null terminated string
 ;   size:   
-;       12 bytes
+;       14 bytes
 ;   stack:
 ;       no stack usage
 ;   input:
@@ -187,9 +217,10 @@
 :strlen:
     MOV CX, AX              ; CX = s1
     MOV BX, AX              ; BX = s1
-    AND AX, AX              ; AX = 0
+    XOR AX, AX              ; AX = 0
 :strlen_loop:
     LOD CX, CX              ; if(!*s1) return AX
+    SHR CX, 8
     JIZ :strlen_return:
     MOV CX, BX              ; s1++
     INC CX
@@ -201,29 +232,29 @@
 ;   strchr routine
 ;       find a character in a null terminated string
 ;   size:   
-;       17 bytes
+;       18 bytes
 ;   stack:
 ;       2 bytes
 ;   input:
 ;       AX      pointer to s1
-;       BX      character to find
+;       BX      character to find, left aligned
 ;   return:
-;       AX      -1 if not found, i if found
+;       CX      -1 if not found, i if found
 :strchr:
-    AND CX, CX                  ; i = 0
+    XOR CX, CX                  ; i = 0
 :strchr_loop:
     PUS AX
     LOD AX, AX
+    JIZ :return_not_found:
+    AND AX, BX
     CMP                         ; if *s1 == c return i
     JIZ :return_found:
-    AND AX, AX                  ; if !*s1 return -1
-    JIZ :return_not_found:
     POP AX
     INC AX                      ; ++s1
     INC CX                      ; ++i
     JMP :strchr_loop:           ; loop
 :return_not_found:
-    AND CX, CX                  ; i = -1
+    XOR CX, CX                  ; i = -1
     DEC CX
 :return_found:
     RCL 2                       ; return SP + 2 because we had pushed AX
@@ -246,6 +277,6 @@
     LOD BX, BX
     STO AX, BX                  ; *dest++ = BX
     INC AX
-    AND BX, BX                  ; if(BX) goto strcpy_loop 
+    SHR BX, 8                   ; if(BX) goto strcpy_loop 
     JNZ :strcpy_loop:
     RCL                         ; return

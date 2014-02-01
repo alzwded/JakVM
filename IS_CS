@@ -33,9 +33,8 @@ DIV CX, 4           DIVide
 CAL :memcmp:        CALl
 RCL 8               ReCalL
 CAR AX, :routine:   CAll Register
-S2L                 Shift 2 Left
-S2R                 Shift 2 Right
-SBF 1               Shift Behaviour Flag
+SCL AX, 3           Shift Carry Left
+SCR AX, 3           Shift Carry Right
 RCR AX              ReCall Register
 IRF 80h             InterRupt Flags
 ROL AX, BX          ROtate Left

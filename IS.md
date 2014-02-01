@@ -26,25 +26,7 @@ Registers
 Flags
 =====
 
-| Name          | Description       |
-|---------------|-------------------|
-| Z             | Zero flag         |
-| C             | Overflow/Carry    |
-| S             | Sign              |
-| ~~I~~         | ~~Interrupt request~~ |
-
-The layout is: `Z``C``S``0``0``0``0``0`
-
-Interrupt flags
-===============
-
-| Name          | Description        |
-|---------------|--------------------|
-| RS            | Reset              |
-| XT            | External interrupt |
-| BS            | Buffer swapped     |
-
-The layout is: `RS``XT``BS``0``0``0``0``0`
+c.f. FLAGS.md
 
 Instruction set
 ===============
@@ -110,8 +92,8 @@ Everything is (should be?) big endian.
 * JOR: jump if C flag is set
 * JNR, JGR, JUR: negated versions
 * MOV: move data from one register to another
-* LOD: load data from address taken from LSB register to MSB register
-* STO: store data from LSB register to address taken from MSB register
+* LOD: load data from address taken from LSB register to MSB register, high byte
+* STO: store data from LSB register to address taken from MSB register, high byte
 
 0x80 - 0x87 Range, 2 bytes: Arithmetic Instructions
 
@@ -162,18 +144,17 @@ Everything is (should be?) big endian.
 * CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
 * RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
 
-0xDC - 0xDF Range, 2 bytes: combined shift instructions
+0xDC - 0xDF Range, 2 bytes: shift with carry instructions
 | Instruction   | Code           | 2nd B      |
 |---------------|----------------|------------|
-| S2L           | 0b 11 01 11 00 | 0b000VVVVV |
-| S2R           | 0b 11 01 11 01 | 0b000VVVVV |
-| S2L           | 0b 11 01 11 00 | 0b11111111 |
-| S2R           | 0b 11 01 11 01 | 0b11111111 |
-| SBF           | 0b 11 01 11 1V |            |
+| SCL           | 0b 11 01 11 00 | 0b0000RRRR |
+| SCR           | 0b 11 01 11 01 | 0b0000RRRR |
+| SCL           | 0b 11 01 11 00 | 0bVVVVRR?? |
+| SCR           | 0b 11 01 11 01 | 0bVVVVRR?? |
+| reserved      | 0b 11 01 11 1? |            |
 
-* S2L: Shift 2 Left -- treats AX and BX as a single 32 bit register and performs a left shift. It sets the Carry flag if AX overflows. For both S2L and S2R if the argument is 0FFh then the amount of shifting will be read from CX
-* S2R: Shift 2 Right -- treats AX and BX as a single 32 bit register and performs a right shift. For both S2L and S2R if the argument is 0FFh then the amount of shifting will be read from CX
-* SBF: Shift Behaviour Flags -- the first bit sets the behaviour for the SHL and SHR instructions. If 0 (default), the SHR will pad the left bits with the value of the Sign flag, if 1 the SHR instruction will pad the left bits with the Carry flag and SHR will set the Carry flag with the last rotated bit. This instruction is one byte
+* SCL: Shift Carry Left -- the bits that are shifted in have the value of the carry flag. These instructions set the carry flag.
+* SCR: Shift 2 Right -- the bits that are shifted in have the value of the carry flag. These instructions set the carry flag.
 
 0xE0 - 0xE3 Range: Interrupt checking
 
@@ -200,8 +181,8 @@ Everything is (should be?) big endian.
 | SHR           | 0b 11 10 01 11 | 0bVVVVRR?? |
 
 * ROL, ROR: rotate bits left or right
-* SHL: shift bits left. The LSBs that are shifted in have the value of the Carry flag
-* SHR: shift bits right. The MSBs that are shifted in have the value of the Sign flag. In case of instruction combinations like `MOV AX, 08000h SHR AX, 2` AX will contain E000h because MOV sets the Sign flag. If you want to pad with zeroes, do `MOV AX, 08000h CLI 0FFFFh SHR AX, 2` because CLI will clear the Sign flag after the MOV instruction.
+* SHL: shift bits left
+* SHR: shift bits right. The MSBs that are shifted in have the value of the Sign flag
 * The behaviour is defined as for the Arithmetic Instructions
 
 0xE8 - 0xEF Range, 2 bytes: Local Branch Instructions
@@ -229,10 +210,10 @@ Everything is (should be?) big endian.
 | LRI           | 0b 11 11 00 10 | 0bVVRRRRRR |
 | SRI           | 0b 11 11 00 11 | 0bVVRRRRRR |
 
-* LDI: The value from address LSB register + immediate value is loaded in MSB register
-* STI: The value from LSB register is stored at location read from MSB register + immediate value
-* LRI: The value located at address LSB register + middle register + immediate value is loaded into MSB register
-* SRI: The value from LSB register is stored at address middle register + MSB register + immediate value
+* LDI: The value from address LSB register + immediate value is loaded in MSB register, high byte
+* STI: The value from LSB register is stored at location read from MSB register + immediate value, high byte
+* LRI: The value located at address LSB register + middle register + immediate value is loaded into MSB register, high byte
+* SRI: The value from LSB register is stored at address middle register + MSB register + immediate value, high byte
 
 0xF4 - 0xF7 Range, 3 bytes: Immediate Memory Instructions
 
