@@ -33,14 +33,15 @@ DIV CX, 4           DIVide
 CAL :memcmp:        CALl
 RCL 8               ReCalL
 CAR AX, :routine:   CAll Register
+RCR AX              ReCall Register
 SCL AX, 3           Shift Carry Left
 SCR AX, 3           Shift Carry Right
-RCR AX              ReCall Register
 IRF 80h             InterRupt Flags
+LAA AX, @const      Load Absolute Address
 ROL AX, BX          ROtate Left
+ROR CX, AX          ROtate Right
 SHL AX, 2           SHift Left
 SHR BX, 15          SHift Right
-ROR CX, AX          ROtate Right
 CLI FFh             CLear flags (I?)
 JMP -60             JuMp to Immediate value
 JIZ :label:         JUmp if Zero
@@ -49,10 +50,10 @@ JLT :label:         Jump if Less Than
 JGE :label:         Jump if Greater than or Equal
 JOF :label:         Jump if OverFlow
 JNF :label:         Jump if No Overflow
-LDI AX, SP, 2       LoaD immediate value
-STI SP, AX, 15      STore
-SRI AX, SP, BX, 3   Store value at Register plus Immediate
-LRI SP, CX, AX, 0   Load
-MVI AX, 329         MoVe Immediate value
+LDI AX, SP, 2       LoaD Indexed value
+STI SP, AX, 15      STore Indexed
+LRI SP, CX, AX, 0   Load from Register + Index
+SRI AX, SP, BX, 3   Store value at Register plus Index
+MVI AX, @const      MoVe Immediate value
 INC AX              INCrement
 DEC AX              DECrement

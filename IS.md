@@ -144,28 +144,32 @@ Everything is (should be?) big endian.
 * CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
 * RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
 
-0xDC - 0xDF Range, 2 bytes: shift with carry instructions
+0xDC - 0xDD Range, 2 bytes: shift with carry instructions
 | Instruction   | Code           | 2nd B      |
 |---------------|----------------|------------|
 | SCL           | 0b 11 01 11 00 | 0b0000RRRR |
 | SCR           | 0b 11 01 11 01 | 0b0000RRRR |
 | SCL           | 0b 11 01 11 00 | 0bVVVVRR?? |
 | SCR           | 0b 11 01 11 01 | 0bVVVVRR?? |
-| reserved      | 0b 11 01 11 1? |            |
 
 * SCL: Shift Carry Left -- the bits that are shifted in have the value of the carry flag. These instructions set the carry flag.
 * SCR: Shift 2 Right -- the bits that are shifted in have the value of the carry flag. These instructions set the carry flag.
 
-0xE0 - 0xE3 Range: Interrupt checking
+0xDE - 0xDF Range: Interrupt checking
 
 | Instruction   | Code           | 2nd B      |
 |---------------|----------------|------------|
-| reserved      | 0b 11 10 00 0? |            |
-| reserved      | 0b 11 10 00 10 |            |
-| IRF           | 0b 11 10 00 11 | 0bVVVVVVVV |
+| reserved      | 0b 11 01 11 10 |            |
+| IRF           | 0b 11 01 11 11 | 0bVVVVVVVV |
 
-* SFT: The op code is 
 * IRF: check interrupt flag register agains immediate mask. Sets Z flag if any of the flags of the masked RF register are raised
+
+0xE0 - 0xE3 Range: Load Absolute Address, 3 bytes
+| Instruction   | Code           | 2nd & 3rd  |
+|---------------|----------------|------------|
+| LAA           | 0b 11 10 00 RR | 0xADDR     |
+
+* LAA: loads the value from an absolute address into register R, high byte
 
 0xE4 - 0xE7 Range, 2 bytes: Shifting Instructions
 
@@ -212,7 +216,7 @@ Everything is (should be?) big endian.
 
 * LDI: The value from address LSB register + immediate value is loaded in MSB register, high byte
 * STI: The value from LSB register is stored at location read from MSB register + immediate value, high byte
-* LRI: The value located at address LSB register + middle register + immediate value is loaded into MSB register, high byte
+* LRI: The value located at address middle register + LSB register + immediate value is loaded into MSB register, high byte
 * SRI: The value from LSB register is stored at address middle register + MSB register + immediate value, high byte
 
 0xF4 - 0xF7 Range, 3 bytes: Immediate Memory Instructions
@@ -232,3 +236,268 @@ Everything is (should be?) big endian.
 
 * atomic incrementation and decrementation instructions applied to register
 
+Notes on each instruction
+=========================
+
+1. NOP
+    * utility: high, maybe padding code a lot since it is NUL
+    * usage: NOP ; pad code
+    * operands: none
+2. INT
+    * utility: high, inter routine communication, context switching, minimal operating system support etc.
+    * usage: MVI AX, 03 MVI BX, 0FFFFh INT ; invoke syscall 3 with parameter 65535
+    * operands: none
+3. ENI
+    * utility: medium, see DEI
+    * usage: ENI
+    * operands: none
+4. DEI
+    * utility: medium. Could be useful to disable interrupts while processing some interesting things, I guess.
+    * usage: DEI
+    * operands: none
+5. RST
+    * utility: high, there needs to be an instruction to reset the software. Then again, you can just MVI AX, 0 JMR AX or LJP 0 or something like that
+    * usage: RST
+    * operands: none
+6. HLT
+    * utility: ultra, there needs to be a way to make the processor sleep, to be awakened by interrupts. This is the only way
+    * usage: HLT
+    * operands: none
+7. SWP
+    * utility: ultra, display output; it swaps buffers
+    * usage: SWP ; done filling in display buffer, now display it
+    * operands: none
+8. CMP
+    * utility: high, single instruction to get both LT/GE AND equality checking. Otherwise, I guess a SUB would do but that's 2 bytes wide
+    * usage: LOD AX, 073C MVI BX, 12 CMP JGE :label:
+    * operands: implicit AX and BX
+9. RET
+    * utility: ultra, since we have an interrupt routine, might as well allow returning from it (or not)
+    * usage: RET ; in .int section, preferably
+    * operands: none
+10. CMU
+    * utility: not so much, but it reduces the number of instructions and reduces the number of polluted registers to do an unsigned comparisson (i.e. where 0FFFFh is greater than 07FFFh
+    * usage: CMU
+    * operands: implicit AX and BX
+11. PUS
+    * utility: ultra, stack manipulation
+    * usage: PUS AX ; push AX onto stack
+    * operands: reg, implicit SP
+12. POP
+    * utility: ultra, stack manipulation
+    * usage: POP AX ; pop into AX
+    * operands: reg, implicit SP
+13. LJP
+    * utility: ultra, jump to absolute address
+    * usage: LJP :some far away label:
+    * operands: imm/16
+14. JMR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+15. JZR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+16. JNR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+17. JLR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+18. JGR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+19. JOR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+20. JUR
+    * utility: ultra, jump to computed address
+    * usage: SUB AX, BX LOD AX, AX JMR AX
+    * operands: reg
+21. MOV
+    * utility: ultra
+    * usage: MOV AX, BX ; copy register BX contents into AX
+    * operands: reg, reg
+22. LOD
+    * utility: ultra
+    * usage: LOD AX, AX ; dereference address stored in AX into the same register
+    * operands: reg, reg
+23. STO
+    * utility: ultra
+    * usage: STO AX, BX
+    * opreands: reg, reg
+24. NEG
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg
+25. NOT
+    * utility: ultra
+    * usage: NOT AX
+    * operands: reg
+26. AND
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg
+27. IOR
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg
+28. XOR
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg
+29. Arithmetic/bitwise
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg || reg, imm/4
+30. Arithmetic/bitwise
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg || reg, imm/4
+31. Arithmetic/bitwise
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg || reg, imm/4
+32. Arithmetic/bitwise
+    * utility: ultra
+    * usage: NEG AX
+    * operands: reg, reg || reg, imm/4
+33. CAL
+    * utility: ultra, procedural call
+    * usage: CAL :memcpy:
+    * operands: imm/16
+34. RCL
+    * utility: ultra, procedural call
+    * usage: RCL 4 ; pop 4 bytes off the stack and return
+    * operands: imm/4
+35. CAR
+    * utility: high, ability to save calling context to a predefined address
+    * usage: CAR AX, :myfunc: ; store context at address specified in AX
+    * operands: reg, imm/16
+36. RCR
+    * utility: high, see CAR
+    * usage: RCR AX ; restore context from address in AX
+    * operands: reg
+37. SCL
+    * utility: high, shift operation with carry
+    * usage: SCL AX, 3
+    * operands: reg, reg || reg, imm/4
+38. SCR
+    * utility: high, shift operation with carry
+    * usage: SCR AX, 3
+    * operands: reg, reg || reg, imm/4
+39. IRF
+    * utility: high, check which interrupts happened
+    * usage: IRF 080h
+    * operands: imm/8
+40. LAA
+    * utility: high, reduces register pollution when working with global data
+    * usage: LAA AX, (data statement)
+    * operands: reg, imm/16
+41. ROL
+    * utility: ultra, roll operation
+    * usage: ROL AX, 8 ; swap high and low bytes
+    * operands: reg, reg || reg, imm/4
+42. ROR
+    * utility: ultra, roll operation
+    * usage: ROR AX, 8 ; swap high and low bytes
+    * operands: reg, reg || reg, imm/4
+43. SHL
+    * utility: ultra
+    * usage: SHL AX, 4 ; multiply by 16
+    * operands: reg, reg || reg, imm/4
+44. SHR
+    * utility: ultra
+    * usage: SHR AX, 2 ; divide by 4
+    * operands: reg, reg || reg, imm/4
+45. CLI
+    * utility: high, clear flags
+    * usage: CLI 0FFh
+    * operands: imm/8
+46. JMP
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+47. JIZ
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+48. JNZ
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+49. JLT
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+50. JGE
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+51. JOF
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+52. JNF
+    * utility: ultra, jump to address relative to current PC
+    * usage: JMP :label:
+    * operands: imm/8
+53. LDI
+    * utility: high, indexed addressing, useful in procedure calling and local variables and whatnot
+    * usage: LDI AX, SP, 15 SHR AX, 8 LDI AX, SP, 14 ; load into AX the 15th and 16th bytes up (i.e. the 8th word)
+    * operands: reg, reg, imm/4
+54. STI
+    * utility: high, indexed addressing, see LDI
+    * usage: STI SP, AX, 14 SHL AX, 8 STI SP, AX, 15 ; store AX as 8th word up the stack
+    * operands: reg, reg, imm/4
+55. LRI
+    * utility: medium, triple indexed address, useful for functions with a bazillion parameters but reduces the number of available registers
+    * usage: LRI AX, SP, CX, 3 ; load into AX the address SP + CX + 3
+    * operands: reg, reg, reg, imm/2
+56. STI
+    * utility: medium, see LRI
+    * usage: SRI SP, CX, AX, 3 ; store AX high byte at address SP + CX + 3
+    * operands: reg, reg, reg, imm/2
+57. MVI
+    * utility: ultra, the only non-convoluted & hackish way to load constants
+    * usage: MVI AX, 3 MVI BX, @constant ; load 3 into AX and load the address of constant from the data section into bx
+    * operands: imm/16
+58. INC
+    * utility: ultra
+    * usage: INC SP ; pop value off of the stack without polluting registers
+    * operands: reg
+59. DEC
+    * utility: ultra
+    * usage: DEC CX ; decrease counter
+    * operands: reg
+
+Number of ultra needed instructions: 41
+Number of highly needed instructions: 13
+Number of not so needed instructions: 5
+
+These instructions are very important:
+* NOP
+* INT
+* RST
+* CMP
+* CAR
+* RCR
+* SCL
+* SCR
+* IRF
+* LAA
+* CLI
+* LDI
+* STI
+
+The not so needed instructions:
+* ENI   -- interrupts can be re-enabled by changing the byte at location 0 to NOP
+* DEI   -- interrupts can be disabled by replacing the byte at location 0 with RET
+* CMU   -- but how useful is this really?
+* LRI   -- you could just increment the base register...
+* STI   -- idem...

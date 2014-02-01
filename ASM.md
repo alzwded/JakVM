@@ -6,6 +6,11 @@ This describes the behaviour of the assembler.
 Major Sections
 ==============
 
+.const
+------
+
+This section is not assembled, but contains constants useful while assembling e.g. offsets, magic numbers. This will not be part of the outputted code. These are accessed using the $ operator.
+
 .int
 ----
 
@@ -48,7 +53,7 @@ In jump or call instructions you can reference labels as your offsets or absolut
 .data
 -----
 
-These can be multiple. They are appended in the order they appear, noting that the .int section always comes first.
+These can be multiple. They are appended in the order they appear, noting that the .int section always comes first. Addresses of data entries are specified in brackets and shall support simple arithmetics.
 
 Format:
 ```
@@ -57,13 +62,31 @@ Format:
 
 Data statements can be referenced in .code and .int sections like so:
 ```
+.const
+magic 1024
 .data
 2 w 1024
+64 asd
 .code
-    MVI AX, $w          ; AX = 1024
+    MVI AX, $magic      ; AX = 1024
 
-    MVI AX, @w          ; AX = addressof(w)
-    LOD AX, AX          ; AX = 1024
+    MVI AX, (w + 1)     ; AX = addressof(w)
+    LOD AX, AX
+    SHR AX, 8
+    MVI AX, (w)         ; AX = 1024
+
+    LAA AX, (w + 1)
+    SHR AX, 8
+    LAA AX, (w)         ; AX = 1024
+
+    MVI BX, (asd)
+    CAL :computeoffset: ; result stored in AX
+    LRI AX, BX, AX      ; AX high byte is loaded with (asd) + value from AX
+
+    MVI BX, (asd)
+    CAL :computeoffset: ; result stored in AX
+    ADD BX, AX
+    LOD AX, BX          ; AX high byte is loaded with (asd) + value from AX
 ```
 
 You can use the .at directive to set the start address of a block. For example
@@ -94,3 +117,17 @@ Multi-file
 Multiple .int sections shall result in an error.
 
 Otherwise, the files are concatenated in the order which they are passed and assembly works as per single files.
+
+Constants and .data section
+---------------------------
+
+There shall be permitted to write stuff like
+```
+LAA AX, (const + 1)
+SHR AX, 8
+LAA AX, (const)
+```
+
+This means that at least simple address addition or substraction should be supported.
+
+
