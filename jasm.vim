@@ -50,7 +50,8 @@ syn region	jasmString		start="'" end="'\|$"
 "syn match	jasmSpecial		"[#?%$,]"
 syn match   jasmSymbol        "[,]"
 syn match	jasmLabel		":[^; \t]\+:"
-syn match   jasmData      "[\$@][a-zA-Z0-9_-]*\>"
+syn match   jasmConstant      "[\$][a-zA-Z0-9_-]*\>"
+syn match   jasmDataAddress   "[(][^()]*[)]"
 syn match   jasmSection   "^\s*\.[a-zA-Z]*"
 syn match   jasmPreprocessor "^\s*#.*$"
 
@@ -74,7 +75,8 @@ hi def link	jasmDirective	preproc
 hi def link	jasmRegister  type
 hi def link	jasmNumber   constant
 hi def link	jasmSymbol special
-hi def link	jasmData special
+hi def link	jasmConstant special
+hi def link	jasmDataAddress special
 hi def link	jasmSection special
 hi def link	jasmString  String
 hi def link	jasmSpecial	special

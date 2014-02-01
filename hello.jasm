@@ -27,12 +27,12 @@
 ;   set video blocks        ; implicitly placed at correct memory anyway
                             ; so code is not used
     MVI AX, 0C000h
-    MVI BX, @cH
+    MVI BX, (cH)
     MVI CX, 64
     CAL :memcpy:
 ;   set pallette
     MVI AX, 0D400h
-    MVI BX, @pallette
+    MVI BX, (pallette)
     MVI CX, 4
     CAL :memcpy:
 
