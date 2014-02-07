@@ -4,7 +4,7 @@
 #include <time.h>
 #include <signal.h>
 sig_atomic_t keep_going = 1;
-long cnt = 6000000;
+long cnt = 60000000;
 
 #define DIFF(FIN, INI) (FIN - INI)
 // dafuq was I thinking with this?
@@ -13,8 +13,8 @@ long cnt = 6000000;
 // target 250000 instructions / 60Hz frame
 #define SLEEP(FIN, INI) do{\
     ts.tv_sec = 0; \
-    ts.tv_nsec = FIN - INI + 7500000; \
-    nanosleep(&ts, NULL); \
+    ts.tv_nsec = 17000000 - (FIN.tv_nsec - INI.tv_nsec); \
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL); \
 }while(0)
 
 void loop(unsigned char* memory) {
@@ -35,7 +35,7 @@ void loop(unsigned char* memory) {
 #define state work.STATE
     unsigned char is[sizeof(struct work_s)];
 
-    clock_t t1, t2;
+    struct timespec t1, t2;
     struct timespec ts;
     unsigned long ticks = 0;
 
@@ -46,7 +46,7 @@ void loop(unsigned char* memory) {
     memset(is, 0, sizeof(struct work_s));
 
     while(keep_going) {
-        if(ticks++ == 0) t1 = clock();
+        if(ticks++ == 0) clock_gettime(CLOCK_MONOTONIC, &t1);
         switch(*pc) {
         case 0x00: // NOP
             ++pc;
@@ -400,7 +400,7 @@ void loop(unsigned char* memory) {
         }
         if(ticks == 250000) {
             ticks = 0;
-            t2 = clock();
+            clock_gettime(CLOCK_MONOTONIC, &t2);
             SLEEP(t2, t1);
         }
         if(!(--cnt)) return;
