@@ -56,6 +56,7 @@ void loop(unsigned char* memory) {
         case 0x01: // INT
             memcpy(is, &work, sizeof(struct work_s));
             pc = &0x00[memory];
+            ticks++;
             break;
         case 0x02: // ENI
         case 0x03: // DEI
@@ -336,6 +337,7 @@ void loop(unsigned char* memory) {
             sp += 2 * (0[pc] & 0x0F);
             pc = memory + ((0[memory + sp] << 8) | 1[memory + sp]);
             sp += 2;
+            ticks++;
             break;
         case 0xD0: // CAL
             0[memory + sp] = ((pc - memory + 3) & 0xFF00) >> 8;
@@ -353,6 +355,7 @@ void loop(unsigned char* memory) {
                 |(memory[regs[0[pc] & 0x3] + 1])) + memory;
             sp = ((memory[regs[0[pc] & 0x3] + 1] << 8)
                 |(memory[regs[0[pc] & 0x3] + 2]));
+            ticks++;
             break;
         case 0xD8: // CAR
         case 0xD9:
