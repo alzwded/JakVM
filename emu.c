@@ -23,6 +23,8 @@ void loop(unsigned char* memory) {
 #define RS 7
 #define XT 6
 #define BS 5
+#define SWINT 1
+#define GEI 0
         short STATE; // RS:RF
     } work;
 #define regs work.REGS
@@ -39,14 +41,27 @@ void loop(unsigned char* memory) {
     // set regs to 0
     memset(regs, 0, 4 * sizeof(short));
     memset(&state, 0, sizeof(short));
+    // set RS flag, power-on-reset, GEI not set
+    state |= (1 << RS);
     pc = 0x0000 + memory;
     // except for sp, which starts at 0xBFFE
     sp = 0xBFFE;
     memset(is, 0, sizeof(struct work_s));
 
+    // TODO set flags after instructions
+
     while(keep_going) {
         // begin a synchronization frame
         if(ticks++ == 0) clock_gettime(CLOCK_MONOTONIC, &t1);
+
+        // interrupts
+        if((state & (1 << GEI))
+        && (state & (0x00E2)))
+        {
+            state &= ~(1 << SWINT); // clear virtual SWINT flag
+            memcpy(is, &work, sizeof(struct work_s));
+            pc = &0x00[memory];
+        }
 
         // execute current instruction
         switch(*pc) {
@@ -54,20 +69,25 @@ void loop(unsigned char* memory) {
             ++pc;
             break;
         case 0x01: // INT
-            memcpy(is, &work, sizeof(struct work_s));
-            pc = &0x00[memory];
-            ticks++;
+            state |= (1 << SWINT);
+            ++pc;
             break;
         case 0x02: // ENI
+            state = (0xFF00 & state) | (1 << GEI);
+            ++pc;
+            break;
         case 0x03: // DEI
+            state &= (0xFFE0);
             ++pc;
             break;
         case 0x04: // RST
-            state |= state | (1 << RS);
+            state |= (1 << RS);
             pc = memory;
             sp = 0xBFFE;
             break;
+        default: // unsupported op-codes default to HLT
         case 0x05: // HLT
+            /* do nothing */
             break;
         case 0x06: // SWP
             ++pc;
@@ -79,6 +99,7 @@ void loop(unsigned char* memory) {
             ++pc;
             break;
         case 0x09: // RET
+            state &= 0xFF01;
             memcpy(&work, is, sizeof(struct work_s));
             break;
         case 0x0A: // CMU
@@ -87,19 +108,13 @@ void loop(unsigned char* memory) {
                 | (( (unsigned short)regs[0] < (unsigned short)regs[1] ) << S);
             ++pc;
             break;
-        case 0x10: // PUS
-        case 0x11:
-        case 0x12:
-        case 0x13:
+        case 0x10: case 0x11: case 0x12: case 0x13: // PUS
             0[memory + sp] = (regs[*pc & 0x3] & 0xFF00) >> 8;
             1[memory + sp] = (regs[*pc & 0x3] & 0xFF);
             sp -= 2;
             ++pc;
             break;
-        case 0x14: // POP
-        case 0x15:
-        case 0x16:
-        case 0x17:
+        case 0x14: case 0x15: case 0x16: case 0x17: // POP
             sp += 2;
             regs[*pc & 0x3] = (0[memory + sp] << 8) | 1[memory + sp];
             ++pc;
@@ -109,101 +124,47 @@ void loop(unsigned char* memory) {
             ticks++;
             ticks++;
             break;
-        case 0x24: // JMR
-        case 0x25:
-        case 0x26:
-        case 0x27:
+        case 0x24: case 0x25: case 0x26: case 0x27: // JMR
             pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x28: // JZR
-        case 0x29:
-        case 0x2A:
-        case 0x2B:
+        case 0x28: case 0x29: case 0x2A: case 0x2B: // JZR
             if(state & (1 << Z)) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x2C: // JNR
-        case 0x2D:
-        case 0x2E:
-        case 0x2F:
+        case 0x2C: case 0x2D: case 0x2E: case 0x2F: // JNR
             if(!(state & (1 << Z))) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x30: // JLR
-        case 0x31:
-        case 0x32:
-        case 0x33:
+        case 0x30: case 0x31: case 0x32: case 0x33: // JLR
             if(state & (1 << S)) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x34: // JGR
-        case 0x35:
-        case 0x36:
-        case 0x37:
+        case 0x34: case 0x35: case 0x36: case 0x37: // JGR
             if(!(state & (1 << S))) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x38: // JOR
-        case 0x39:
-        case 0x3A:
-        case 0x3B:
+        case 0x38: case 0x39: case 0x3A: case 0x3B: // JOR
             if(state & (1 << C)) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x3C: // JUR
-        case 0x3D:
-        case 0x3E:
-        case 0x3F:
+        case 0x3C: case 0x3D: case 0x3E: case 0x3F: // JUR
             if(!(state & (1 << C))) pc = memory + regs[(*pc) & 0x3];
             break;
-        case 0x50: // MOV
-        case 0x51:
-        case 0x52:
-        case 0x53:
-        case 0x54:
-        case 0x55:
-        case 0x56:
-        case 0x57:
-        case 0x58:
-        case 0x59:
-        case 0x5A:
-        case 0x5B:
-        case 0x5C:
-        case 0x5D:
-        case 0x5F:
+        case 0x50: case 0x51: case 0x52: case 0x53:
+        case 0x54: case 0x55: case 0x56: case 0x57:
+        case 0x58: case 0x59: case 0x5A: case 0x5B:
+        case 0x5C: case 0x5D: case 0x5E: case 0x5F: // MOV
             regs[((*pc) & 0x0C) >> 2] = regs[(*pc) & 0x03];
             ++pc;
             break;
-        case 0x60: // LOD
-        case 0x61:
-        case 0x62:
-        case 0x63:
-        case 0x64:
-        case 0x65:
-        case 0x66:
-        case 0x67:
-        case 0x68:
-        case 0x69:
-        case 0x6A:
-        case 0x6B:
-        case 0x6C:
-        case 0x6D:
-        case 0x6F:
+        case 0x60: case 0x61: case 0x62: case 0x63:
+        case 0x64: case 0x65: case 0x66: case 0x67:
+        case 0x68: case 0x69: case 0x6A: case 0x6B:
+        case 0x6C: case 0x6D: case 0x6E: case 0x6F: // LOD
             regs[((*pc) & 0x0C) >> 2] =
                 (regs[((*pc) & 0x0C) >> 2] & 0x00FF)
                 | (memory[(unsigned short)regs[(*pc) & 0x03]] << 8);
             ++pc;
             break;
-        case 0x70: // STO
-        case 0x71:
-        case 0x72:
-        case 0x73:
-        case 0x74:
-        case 0x75:
-        case 0x76:
-        case 0x77:
-        case 0x78:
-        case 0x79:
-        case 0x7A:
-        case 0x7B:
-        case 0x7C:
-        case 0x7D:
-        case 0x7F:
+        case 0x70: case 0x71: case 0x72: case 0x73:
+        case 0x74: case 0x75: case 0x76: case 0x77:
+        case 0x78: case 0x79: case 0x7A: case 0x7B:
+        case 0x7C: case 0x7D: case 0x7E: case 0x7F: // STO
             memory[(unsigned short)regs[((*pc) & 0x0C) >> 2]] = (0xFF00 & regs[(*pc) & 0x03]) >> 8;
             ++pc;
             break;
@@ -247,93 +208,39 @@ void loop(unsigned char* memory) {
             pc += 2;
             ticks++;
             break;
-        case 0x88: // NEG
-        case 0x89:
-        case 0x8A:
-        case 0x8B:
+        case 0x88: case 0x89: case 0x8A: case 0x8B: // NEG
             regs[(*pc) & 0x3] = -regs[(*pc) & 0x3];
             ++pc;
             break;
-        case 0x8C: // NOT
-        case 0x8D:
-        case 0x8E:
-        case 0x8F:
+        case 0x8C: case 0x8D: case 0x8E: case 0x8F: // NOT
             regs[(*pc) & 0x3] = ~regs[(*pc) & 0x3];
             ++pc;
             break;
-        case 0x90: // AND
-        case 0x91:
-        case 0x92:
-        case 0x93:
-        case 0x94:
-        case 0x95:
-        case 0x96:
-        case 0x97:
-        case 0x98:
-        case 0x99:
-        case 0x9A:
-        case 0x9B:
-        case 0x9C:
-        case 0x9D:
-        case 0x9E:
-        case 0x9F:
+        case 0x90: case 0x91: case 0x92: case 0x93:
+        case 0x94: case 0x95: case 0x96: case 0x97:
+        case 0x98: case 0x99: case 0x9A: case 0x9B:
+        case 0x9C: case 0x9D: case 0x9E: case 0x9F: // AND
             regs[(0[pc] & 0xC) >> 2] &= regs[0[pc] & 0x3];
             ++pc;
             break;
-        case 0xA0: // IOR
-        case 0xA1:
-        case 0xA2:
-        case 0xA3:
-        case 0xA4:
-        case 0xA5:
-        case 0xA6:
-        case 0xA7:
-        case 0xA8:
-        case 0xA9:
-        case 0xAA:
-        case 0xAB:
-        case 0xAC:
-        case 0xAD:
-        case 0xAE:
-        case 0xAF:
+        case 0xA0: case 0xA1: case 0xA2: case 0xA3:
+        case 0xA4: case 0xA5: case 0xA6: case 0xA7:
+        case 0xA8: case 0xA9: case 0xAA: case 0xAB:
+        case 0xAC: case 0xAD: case 0xAE: case 0xAF: // IOR
             regs[(0[pc] & 0xC) >> 2] |= regs[0[pc] & 0x3];
             ++pc;
             break;
-        case 0xB0: // XOR
-        case 0xB1:
-        case 0xB2:
-        case 0xB3:
-        case 0xB4:
-        case 0xB5:
-        case 0xB6:
-        case 0xB7:
-        case 0xB8:
-        case 0xB9:
-        case 0xBA:
-        case 0xBB:
-        case 0xBC:
-        case 0xBD:
-        case 0xBE:
-        case 0xBF:
+        case 0xB0: case 0xB1: case 0xB2: case 0xB3:
+        case 0xB4: case 0xB5: case 0xB6: case 0xB7:
+        case 0xB8: case 0xB9: case 0xBA: case 0xBB:
+        case 0xBC: case 0xBD: case 0xBE: case 0xBF: // XOR
             regs[(0[pc] & 0xC) >> 2] ^= regs[0[pc] & 0x3];
             ++pc;
             break;
-        case 0xC0: // RCL
-        case 0xC1:
-        case 0xC2:
-        case 0xC3:
-        case 0xC4:
-        case 0xC5:
-        case 0xC6:
-        case 0xC7:
-        case 0xC8:
-        case 0xC9:
-        case 0xCA:
-        case 0xCB:
-        case 0xCC:
-        case 0xCD:
-        case 0xCE:
-        case 0xCF:
+        case 0xC0: case 0xC1: case 0xC2: case 0xC3:
+        case 0xC4: case 0xC5: case 0xC6: case 0xC7:
+        case 0xC8: case 0xC9: case 0xCA: case 0xCB:
+        case 0xCC: case 0xCD: case 0xCE: case 0xCF: // RCL
             sp += 2 * (0[pc] & 0x0F);
             pc = memory + ((0[memory + sp] << 8) | 1[memory + sp]);
             sp += 2;
@@ -347,20 +254,14 @@ void loop(unsigned char* memory) {
             ticks++;
             ticks++;
             break;
-        case 0xD4: // RCR
-        case 0xD5:
-        case 0xD6:
-        case 0xD7:
+        case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RCR
             pc = ((memory[regs[0[pc] & 0x3] + 0] << 8)
                 |(memory[regs[0[pc] & 0x3] + 1])) + memory;
             sp = ((memory[regs[0[pc] & 0x3] + 1] << 8)
                 |(memory[regs[0[pc] & 0x3] + 2]));
             ticks++;
             break;
-        case 0xD8: // CAR
-        case 0xD9:
-        case 0xDA:
-        case 0xDB:
+        case 0xD8: case 0xD9: case 0xDA: case 0xDB: // CAR
             memory[regs[0[pc] & 0x3] + 0] = ((pc - memory + 3) & 0xFF00) >> 8;
             memory[regs[0[pc] & 0x3] + 1] = ((pc - memory + 3) & 0xFF);
             memory[regs[0[pc] & 0x3] + 1] = ((sp) & 0xFF00) >> 8;
@@ -369,58 +270,123 @@ void loop(unsigned char* memory) {
             ticks++;
             ticks++;
             break;
+        case 0xDC: // SCL
+            if(1[pc] & 0xF0) {
+                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x8000u >> ((1[pc] & 0xF0) >> 4)));
+                regs[(1[pc] & 0xC) >> 2] <<= (1[pc] & 0xF0) >> 4;
+            } else {
+                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x8000u >> regs[1[pc] & 0x3]));
+                regs[(1[pc] & 0xC) >> 2] <<= regs[1[pc] & 0x3];
+            }
+            pc += 2;
+            ticks++;
+            break;
+        case 0xDD: // SCR
+            if(1[pc] & 0xF0) {
+                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x1u << ((1[pc] & 0xF0) >> 4)));
+                regs[(1[pc] & 0xC) >> 2] >>= (1[pc] & 0xF0) << 4;
+            } else {
+                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x1u << regs[1[pc] & 0x3]));
+                regs[(1[pc] & 0xC) >> 2] >>= regs[1[pc] & 0x3];
+            }
+            pc += 2;
+            ticks++;
+            break;
+        case 0xDF: // IRF
+            if((state & 0xFF) & 1[pc]) state = (0x7F & state) | 0x80;
+            ticks++;
+            pc += 2;
+            break;
+        case 0xE0: case 0xE1: case 0xE2: case 0xE3: // LAA
+            regs[0[pc] & 0x3] = (0xFF & regs[0[pc] & 0x3]) | memory[(1[pc] << 8) || 2[pc]];
+            pc += 3;
+            ticks++;
+            ticks++;
+            break;
+        case 0xE4: // ROL
+            // TODO
+            pc += 2;
+            ticks++;
+            break;
+        case 0xE5: // ROR
+            pc += 2;
+            ticks++;
+            break;
+        case 0xE6: // SHL
+            pc += 2;
+            ticks++;
+            break;
+        case 0xE7: // SHR
+            pc += 2;
+            ticks++;
+            break;
         case 0xE8: // CLI
-            state &= ~(1[pc] << 8);
+            state &= ~(1[pc] << 8) | 0xFF;
             pc += 2;
             ticks++;
             break;
         case 0xE9: // JMP
-            pc += 1[pc];
+            pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xEA: // JIZ
-            if(state & (1 << Z)) pc += 1[pc];
+            if(state & (1 << Z)) pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xEB: // JNZ
-            if(!(state & (1 << Z))) pc += 1[pc];
+            if(!(state & (1 << Z))) pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xEC: // JLT
-            if(state & (1 << S)) pc += 1[pc];
+            if(state & (1 << S)) pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xED: // JGE
-            if(!(state & (1 << S))) pc += 1[pc];
+            if(!(state & (1 << S))) pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xEE: // JOF
-            if(state & (1 << C)) pc += 1[pc];
+            if(state & (1 << C)) pc += (signed char)1[pc];
             ticks++;
             break;
         case 0xEF: // JNF
-            if(!(state & (1 << C))) pc += 1[pc];
+            if(!(state & (1 << C))) pc += (signed char)1[pc];
             ticks++;
             break;
-        case 0xF4: // MVI
-        case 0xF5:
-        case 0xF6:
-        case 0xF7:
+        case 0xF0: // LDI
+            regs[(1[pc] & 0xC) >> 2] = (0xFF & regs[(1[pc] & 0xC) >> 2]);
+            regs[(1[pc] & 0xC) >> 2] |= memory[((1[pc] & 0xF0) >> 4) + regs[1[pc] & 0x3]] << 8;
+            pc += 2;
+            ticks++;
+            break;
+        case 0xF1: // STI
+            memory[regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
+                (regs[1[pc] & 0x3] & 0xFF00) >> 8;
+            pc += 2;
+            ticks++;
+            break;
+        case 0xF2: // LRI
+            regs[(1[pc] & 0x30) >> 4] = (0xFF & regs[(1[pc] & 0x30) >> 4]);
+            regs[(1[pc] & 0x30) >> 4] |= memory[((1[pc] & 0xC0) >> 6) + regs[1[pc] & 0x3] + regs[(1[pc] & 0xC) >> 2]] << 8;
+            pc += 2;
+            ticks++;
+            break;
+        case 0xF3: // SRI
+            memory[regs[(1[pc] & 0x30) >> 4] + regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
+                (regs[1[pc] & 0x3] & 0xFF00) >> 8;
+            pc += 2;
+            ticks++;
+            break;
+        case 0xF4: case 0xF5: case 0xF6: case 0xF7: // MVI
             regs[(*pc) & 0x03] = (1[pc] << 8) | (2[pc]);
             pc += 3;
             ticks++;
             ticks++;
             break;
-        case 0xF8: // INC
-        case 0xF9:
-        case 0xFA:
-        case 0xFB:
+        case 0xF8: case 0xF9: case 0xFA: case 0xFB: // INC
             ++regs[(*pc++) & 0x3];
             break;
-        case 0xFC: // DEC
-        case 0xFD:
-        case 0xFE:
-        case 0xFF:
+        case 0xFC: case 0xFD: case 0xFE: case 0xFF: // DEC
             --regs[(*pc++) & 0x3];
             break;
         }
@@ -439,25 +405,26 @@ void load_test_program1()
 {
     // increments memory location 0x8000 by 7
     // these are the raw op-codes put in memory
-    memory[0] = 0xF4; // MVI AX, 1
-    memory[1] = 0x01;
+    memory[0] = 0x02; // ENI
+    memory[1] = 0xF4; // MVI AX, 1
     memory[2] = 0x01;
-    memory[3] = 0xF5; // MVI BX, 1
-    memory[4] = 0x06;
+    memory[3] = 0x01;
+    memory[4] = 0xF5; // MVI BX, 1
     memory[5] = 0x06;
-    memory[6] = 0x80; // ADD AX, BX
-    memory[7] = 0x01; // 
-    memory[8] = 0xF5; // MVI BX, 0x8000
-    memory[9] = 0x80;
-    memory[10] = 0x00;
-    memory[11] = 0x65; // LOD BX, BX
-    memory[12] = 0x80; // ADD AX, BX
-    memory[13] = 0x01;
-    memory[14] = 0xF5; // MVI BX, 0x8000
-    memory[15] = 0x80;
-    memory[16] = 0x00;
-    memory[17] = 0x74; // STO BX, AX
-    memory[18] = 0x04; // RST
+    memory[6] = 0x06;
+    memory[7] = 0x80; // ADD AX, BX
+    memory[8] = 0x01; // 
+    memory[9] = 0xF5; // MVI BX, 0x8000
+    memory[10] = 0x80;
+    memory[11] = 0x00;
+    memory[12] = 0x65; // LOD BX, BX
+    memory[13] = 0x80; // ADD AX, BX
+    memory[14] = 0x01;
+    memory[15] = 0xF5; // MVI BX, 0x8000
+    memory[16] = 0x80;
+    memory[17] = 0x00;
+    memory[18] = 0x74; // STO BX, AX
+    memory[19] = 0x04; // RST
 }
 
 int main()
