@@ -4,15 +4,17 @@
 #include <time.h>
 #include <signal.h>
 sig_atomic_t keep_going = 1;
-long cnt = 100000;
+long cnt = 6000000;
 
 #define DIFF(FIN, INI) (FIN - INI)
 // dafuq was I thinking with this?
 //    ( (FIN > INI) ? (FIN - INI) : (FIN + ( ((clock_t)(0) - 1) - INI)) )
 #define NANOSLEEPARG(FIN, INI) ((300002l - DIFF(FIN+1, INI)))
+// target 250000 instructions / 60Hz frame
 #define SLEEP(FIN, INI) do{\
-    tn = INI + 32l - FIN; \
-    while(clock() - FIN + INI < 32l); \
+    ts.tv_sec = 0; \
+    ts.tv_nsec = FIN - INI + 7500000; \
+    nanosleep(&ts, NULL); \
 }while(0)
 
 void loop(unsigned char* memory) {
@@ -34,7 +36,8 @@ void loop(unsigned char* memory) {
     unsigned char is[sizeof(struct work_s)];
 
     clock_t t1, t2;
-    clock_t tn;
+    struct timespec ts;
+    unsigned long ticks = 0;
 
     memset(regs, 0, 4 * sizeof(short));
     memset(&state, 0, sizeof(short));
@@ -43,7 +46,7 @@ void loop(unsigned char* memory) {
     memset(is, 0, sizeof(struct work_s));
 
     while(keep_going) {
-        t1 = clock();
+        if(ticks++ == 0) t1 = clock();
         switch(*pc) {
         case 0x00: // NOP
             ++pc;
@@ -395,9 +398,11 @@ void loop(unsigned char* memory) {
             --regs[(*pc++) & 0x3];
             break;
         }
-        t2 = clock();
-        //printf("%ld : %ld : %ld\n", t1, t2, NANOSLEEPARG(t2, t1));
-        SLEEP(t2, t1);
+        if(ticks == 250000) {
+            ticks = 0;
+            t2 = clock();
+            SLEEP(t2, t1);
+        }
         if(!(--cnt)) return;
     }
 }
