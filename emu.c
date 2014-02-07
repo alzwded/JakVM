@@ -1,3 +1,7 @@
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <signal.h>
 sig_atomic_t keep_going = 1;
 
 #define DIFF(FIN, INI) (FIN - INI)
@@ -23,10 +27,11 @@ void loop(unsigned char* memory) {
     unsigned char is[sizeof(struct work_s)];
 
     clock_t t1, t2;
+    struct timespec ts = { 0l, 0l };
 
     memset(regs, 0, 4 * sizeof(short));
-    pc = 0x0000[memory];
-    sp = 0xBFFE[memory];
+    pc = 0x0000 + memory;
+    sp = 0xBFFE + memory;
     memset(is, 0, 104 * sizeof(unsigned char));
 
     while(keep_going) {
@@ -37,16 +42,16 @@ void loop(unsigned char* memory) {
             break;
         case 0x01: // INT
             memcpy(is, &work, sizeof(struct work_s));
-            pc = 0x00[memory];
+            pc = &0x00[memory];
             break;
         case 0x02: // ENI
         case 0x03: // DEI
             ++pc;
             break;
         case 0x04: // RST
-            state |= state | (1 << RST);
-            pc = 0[memory];
-            sp = 0xBFFE[memory];
+            state |= state | (1 << RS);
+            pc = memory;
+            sp = 0xBFFE + memory;
             break;
         case 0x05: // HLT
             break;
@@ -312,8 +317,8 @@ void loop(unsigned char* memory) {
             sp += 2;
             break;
         case 0xD0: // CAL
-            0[sp] = (pc & 0xFF00) >> 8;
-            1[sp] = ((pc + 3) & 0xFF);
+            0[sp] = ((pc - memory + 3) & 0xFF00) >> 8;
+            1[sp] = ((pc - memory + 3) & 0xFF);
             sp -= 2;
             pc = memory + ((1[pc] << 8) | (2[pc]));
             break;
@@ -330,8 +335,8 @@ void loop(unsigned char* memory) {
         case 0xD9:
         case 0xDA:
         case 0xDB:
-            memory[regs[0[pc] & 0x3] + 0] = ((pc - memory) & 0xFF00) >> 8;
-            memory[regs[0[pc] & 0x3] + 1] = ((pc - memory) & 0xFF);
+            memory[regs[0[pc] & 0x3] + 0] = ((pc - memory + 3) & 0xFF00) >> 8;
+            memory[regs[0[pc] & 0x3] + 1] = ((pc - memory + 3) & 0xFF);
             memory[regs[0[pc] & 0x3] + 1] = ((sp - memory) & 0xFF00) >> 8;
             memory[regs[0[pc] & 0x3] + 2] = ((sp - memory) & 0xFF);
             pc = memory + ((1[pc] << 8) | 2[pc]);
@@ -382,6 +387,12 @@ void loop(unsigned char* memory) {
             break;
         }
         t2 = clock();
-        nanosleep((30l - DIFF(t2 - 1, t1)) & 0x1F);
+        ts.tv_nsec = (30l - DIFF(t2 - 2, t1)) & 0x1F;
+        nanosleep(&ts, NULL);
     }
+}
+
+int main() {
+    abort();
+    loop(NULL);
 }
