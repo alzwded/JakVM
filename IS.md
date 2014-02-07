@@ -103,11 +103,14 @@ Everything is (should be?) big endian.
 | SUB           | 0b 10 00 00 01 | 0b0000RRRR |
 | MUL           | 0b 10 00 00 10 | 0b0000RRRR |
 | DIV           | 0b 10 00 00 11 | 0b0000RRRR |
+| MOD           | 0b 10 00 01 00 | 0b0000RRRR |
 | ADD           | 0b 10 00 00 00 | 0bVVVVRR?? |
 | SUB           | 0b 10 00 00 01 | 0bVVVVRR?? |
 | MUL           | 0b 10 00 00 10 | 0bVVVVRR?? |
 | DIV           | 0b 10 00 00 11 | 0bVVVVRR?? |
-| reserved      | 0b 10 00 01 ?? |            |
+| MOD           | 0b 10 00 01 00 | 0bVVVVRR?? |
+| reserved      | 0b 10 00 01 01 |            |
+| reserved      | 0b 10 00 01 1? |            |
 
 * First set add value from LSB register to MSB register (VVVV=0)
 * Second set add imediate value to register (VVVV!=0)
@@ -135,12 +138,11 @@ Everything is (should be?) big endian.
 |---------------|----------------|------------|
 | RCL           | 0b 11 00 VV VV |            |
 | CAL           | 0b 11 01 00 00 | 0xADDR     |
-| RCR           | 0b 11 01 00 RR |            |
-| CAR           | 0b 11 01 01 RR | 0xADDR     |
-| reserved      | 0b 11 01 10 ?? |            |
+| RCR           | 0b 11 01 01 RR |            |
+| CAR           | 0b 11 01 10 RR | 0xADDR     |
 
 * CAL: pushes PC+3 on the stack and long jumps to ADDR, 3 bytes
-* RCL: pops V value off the stack, then pops another value and sets PC to that, one byte
+* RCL: pops V values off the stack, then pops another value and sets PC to that, one byte
 * CAR: stores PC+3 and SP at the address pointed to by register R and long-jumps to ADDR, three bytes
 * RCR: it restores PC and SP from the address pointed to by register R, and then continues, one byte
 

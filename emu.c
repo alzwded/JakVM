@@ -5,16 +5,22 @@ sig_atomic_t keep_going = 1;
 //    ( (FIN > INI) ? (FIN - INI) : (FIN + ( ((clock_t)(0) - 1) - INI)) )
 
 void loop(unsigned char* memory) {
-    short regs[4];
-    unsigned char* pc,* sp;
+    struct work_s {
+    short REGS[4];
+    unsigned char* PC,* SP;
 #define Z 15
 #define C 14
 #define S 13
 #define RS 7
 #define XT 6
 #define BS 5
-    short state;
-    unsigned char is[104];
+    short STATE;
+    } work;
+#define regs work.REGS
+#define pc work.PC
+#define sp work.SP
+#define state work.STATE
+    unsigned char is[sizeof(struct work_s)];
 
     clock_t t1, t2;
 
@@ -26,7 +32,25 @@ void loop(unsigned char* memory) {
     while(keep_going) {
         t1 = clock();
         switch(*pc) {
-        case 0x00:
+        case 0x00: // NOP
+            ++pc;
+            break;
+        case 0x01: // INT
+            memcpy(is, &work, sizeof(struct work_s));
+            pc = 0x00[memory];
+            break;
+        case 0x02: // ENI
+        case 0x03: // DEI
+            ++pc;
+            break;
+        case 0x04: // RST
+            state |= state | (1 << RST);
+            pc = 0[memory];
+            sp = 0xBFFE[memory];
+            break;
+        case 0x05: // HLT
+            break;
+        case 0x06: // SWP
             ++pc;
             break;
         case 0x08: // CMP
@@ -35,12 +59,21 @@ void loop(unsigned char* memory) {
                 | ((regs[0] < regs[1]) << S);
             ++pc;
             break;
+        case 0x09: // RET
+            memcpy(&work, is, sizeof(struct work_s));
+            break;
+        case 0x0A: // CMU
+            state = (state & ~0xA0)
+                | ((regs[0] == regs[1]) << Z)
+                | (( (unsigned short)regs[0] < (unsigned short)regs[1] ) << S);
+            ++pc;
+            break;
         case 0x10: // PUS
         case 0x11:
         case 0x12:
         case 0x13:
-            0[sp] = regs[*pc & 0x3] & 0x0F;
-            1[sp] = (regs[*pc & 0x3] & 0xF0) >> 8;
+            0[sp] = (regs[*pc & 0x3] & 0xFF00) >> 8;
+            1[sp] = (regs[*pc & 0x3] & 0xFF);
             sp -= 2;
             ++pc;
             break;
@@ -54,6 +87,48 @@ void loop(unsigned char* memory) {
             break;
         case 0x1F: // LJP
             pc = memory + ((1[pc] << 8) | 2[pc]);
+            break;
+        case 0x24: // JMR
+        case 0x25:
+        case 0x26:
+        case 0x27:
+            pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x28: // JZR
+        case 0x29:
+        case 0x2A:
+        case 0x2B:
+            if(state & (1 << Z)) pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x2C: // JNR
+        case 0x2D:
+        case 0x2E:
+        case 0x2F:
+            if(!(state & (1 << Z))) pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x30: // JLR
+        case 0x31:
+        case 0x32:
+        case 0x33:
+            if(state & (1 << S)) pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x34: // JGR
+        case 0x35:
+        case 0x36:
+        case 0x37:
+            if(!(state & (1 << S))) pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x38: // JOR
+        case 0x39:
+        case 0x3A:
+        case 0x3B:
+            if(state & (1 << C)) pc = memory + regs[(*pc) & 0x3];
+            break;
+        case 0x3C: // JUR
+        case 0x3D:
+        case 0x3E:
+        case 0x3F:
+            if(!(state & (1 << C))) pc = memory + regs[(*pc) & 0x3];
             break;
         case 0x50: // MOV
         case 0x51:
@@ -110,6 +185,157 @@ void loop(unsigned char* memory) {
             memory[(regs[((*pc) & 0x0C)] >> 2) + 1] = (0x0F & regs[(*pc) & 0x03]);
             ++pc;
             break;
+        case 0x80: // ADD
+            if(1[pc] & 0xF0)
+                regs[(1[pc] & 0xC) >> 2] += (1[pc] & 0xF0) >> 4;
+            else
+                regs[(1[pc] & 0xC) >> 2] += regs[1[pc] & 0x3];
+            pc += 2;
+            break;
+        case 0x81: // SUB
+            if(1[pc] & 0xF0)
+                regs[(1[pc] & 0xC) >> 2] -= (1[pc] & 0xF0) >> 4;
+            else
+                regs[(1[pc] & 0xC) >> 2] -= regs[1[pc] & 0x3];
+            pc += 2;
+            break;
+        case 0x82: // MUL
+            if(1[pc] & 0xF0)
+                regs[(1[pc] & 0xC) >> 2] *= (1[pc] & 0xF0) >> 4;
+            else
+                regs[(1[pc] & 0xC) >> 2] *= regs[1[pc] & 0x3];
+            pc += 2;
+            break;
+        case 0x83: // DIV
+            if(1[pc] & 0xF0)
+                regs[(1[pc] & 0xC) >> 2] /= (1[pc] & 0xF0) >> 4;
+            else
+                regs[(1[pc] & 0xC) >> 2] /= regs[1[pc] & 0x3];
+            pc += 2;
+            break;
+        case 0x84: // MOD
+            if(1[pc] & 0xF0)
+                regs[(1[pc] & 0xC) >> 2] %= (1[pc] & 0xF0) >> 4;
+            else
+                regs[(1[pc] & 0xC) >> 2] %= regs[1[pc] & 0x3];
+            pc += 2;
+            break;
+        case 0x88: // NEG
+        case 0x89:
+        case 0x8A:
+        case 0x8B:
+            regs[(*pc) & 0x3] = -regs[(*pc) & 0x3];
+            ++pc;
+            break;
+        case 0x8C: // NOT
+        case 0x8D:
+        case 0x8E:
+        case 0x8F:
+            regs[(*pc) & 0x3] = ~regs[(*pc) & 0x3];
+            ++pc;
+            break;
+        case 0x90: // AND
+        case 0x91:
+        case 0x92:
+        case 0x93:
+        case 0x94:
+        case 0x95:
+        case 0x96:
+        case 0x97:
+        case 0x98:
+        case 0x99:
+        case 0x9A:
+        case 0x9B:
+        case 0x9C:
+        case 0x9D:
+        case 0x9E:
+        case 0x9F:
+            regs[(0[pc] & 0xC) >> 2] &= regs[0[pc] & 0x3];
+            ++pc;
+            break;
+        case 0xA0: // IOR
+        case 0xA1:
+        case 0xA2:
+        case 0xA3:
+        case 0xA4:
+        case 0xA5:
+        case 0xA6:
+        case 0xA7:
+        case 0xA8:
+        case 0xA9:
+        case 0xAA:
+        case 0xAB:
+        case 0xAC:
+        case 0xAD:
+        case 0xAE:
+        case 0xAF:
+            regs[(0[pc] & 0xC) >> 2] |= regs[0[pc] & 0x3];
+            ++pc;
+            break;
+        case 0xB0: // XOR
+        case 0xB1:
+        case 0xB2:
+        case 0xB3:
+        case 0xB4:
+        case 0xB5:
+        case 0xB6:
+        case 0xB7:
+        case 0xB8:
+        case 0xB9:
+        case 0xBA:
+        case 0xBB:
+        case 0xBC:
+        case 0xBD:
+        case 0xBE:
+        case 0xBF:
+            regs[(0[pc] & 0xC) >> 2] ^= regs[0[pc] & 0x3];
+            ++pc;
+            break;
+        case 0xC0: // RCL
+        case 0xC1:
+        case 0xC2:
+        case 0xC3:
+        case 0xC4:
+        case 0xC5:
+        case 0xC6:
+        case 0xC7:
+        case 0xC8:
+        case 0xC9:
+        case 0xCA:
+        case 0xCB:
+        case 0xCC:
+        case 0xCD:
+        case 0xCE:
+        case 0xCF:
+            sp += 2 * (0[pc] & 0x0F);
+            pc = memory + ((0[sp] << 8) | 1[sp]);
+            sp += 2;
+            break;
+        case 0xD0: // CAL
+            0[sp] = (pc & 0xFF00) >> 8;
+            1[sp] = ((pc + 3) & 0xFF);
+            sp -= 2;
+            pc = memory + ((1[pc] << 8) | (2[pc]));
+            break;
+        case 0xD4: // RCR
+        case 0xD5:
+        case 0xD6:
+        case 0xD7:
+            pc = ((memory[regs[0[pc] & 0x3] + 0] << 8)
+                |(memory[regs[0[pc] & 0x3] + 1])) + memory;
+            sp = ((memory[regs[0[pc] & 0x3] + 1] << 8)
+                |(memory[regs[0[pc] & 0x3] + 2])) + memory;
+            break;
+        case 0xD8: // CAR
+        case 0xD9:
+        case 0xDA:
+        case 0xDB:
+            memory[regs[0[pc] & 0x3] + 0] = ((pc - memory) & 0xFF00) >> 8;
+            memory[regs[0[pc] & 0x3] + 1] = ((pc - memory) & 0xFF);
+            memory[regs[0[pc] & 0x3] + 1] = ((sp - memory) & 0xFF00) >> 8;
+            memory[regs[0[pc] & 0x3] + 2] = ((sp - memory) & 0xFF);
+            pc = memory + ((1[pc] << 8) | 2[pc]);
+            break;
         case 0xE8: // CLI
             state &= ~(1[pc] << 8);
             pc += 2;
@@ -156,6 +382,6 @@ void loop(unsigned char* memory) {
             break;
         }
         t2 = clock();
-        nanosleep((30l - DIFF(t2 + 1, t1)) & 0x1F);
+        nanosleep((30l - DIFF(t2 - 1, t1)) & 0x1F);
     }
 }
