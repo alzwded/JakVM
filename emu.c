@@ -4,13 +4,9 @@
 #include <time.h>
 #include <signal.h>
 sig_atomic_t keep_going = 1;
-long cnt = 60000000;
 
-#define DIFF(FIN, INI) (FIN - INI)
-// dafuq was I thinking with this?
-//    ( (FIN > INI) ? (FIN - INI) : (FIN + ( ((clock_t)(0) - 1) - INI)) )
-#define NANOSLEEPARG(FIN, INI) ((300002l - DIFF(FIN+1, INI)))
 // target 250000 instructions / 60Hz frame
+#define INSTR_PER_FRAME 250000
 #define SLEEP(FIN, INI) do{\
     ts.tv_sec = 0; \
     ts.tv_nsec = 17000000 - (FIN.tv_nsec - INI.tv_nsec); \
@@ -19,34 +15,40 @@ long cnt = 60000000;
 
 void loop(unsigned char* memory) {
     struct work_s {
-    short REGS[4];
-    unsigned char* PC,* SP;
+        unsigned short REGS[4]; // AX, BX, CX, SP
+        unsigned char* PC;
 #define Z 15
 #define C 14
 #define S 13
 #define RS 7
 #define XT 6
 #define BS 5
-    short STATE;
+        short STATE; // RS:RF
     } work;
 #define regs work.REGS
 #define pc work.PC
-#define sp work.SP
+#define sp work.REGS[3]
 #define state work.STATE
     unsigned char is[sizeof(struct work_s)];
 
+    // time and synchronization
     struct timespec t1, t2;
     struct timespec ts;
     unsigned long ticks = 0;
 
+    // set regs to 0
     memset(regs, 0, 4 * sizeof(short));
     memset(&state, 0, sizeof(short));
     pc = 0x0000 + memory;
-    sp = 0xBFFE + memory;
+    // except for sp, which starts at 0xBFFE
+    sp = 0xBFFE;
     memset(is, 0, sizeof(struct work_s));
 
     while(keep_going) {
+        // begin a synchronization frame
         if(ticks++ == 0) clock_gettime(CLOCK_MONOTONIC, &t1);
+
+        // execute current instruction
         switch(*pc) {
         case 0x00: // NOP
             ++pc;
@@ -62,7 +64,7 @@ void loop(unsigned char* memory) {
         case 0x04: // RST
             state |= state | (1 << RS);
             pc = memory;
-            sp = 0xBFFE + memory;
+            sp = 0xBFFE;
             break;
         case 0x05: // HLT
             break;
@@ -88,8 +90,8 @@ void loop(unsigned char* memory) {
         case 0x11:
         case 0x12:
         case 0x13:
-            0[sp] = (regs[*pc & 0x3] & 0xFF00) >> 8;
-            1[sp] = (regs[*pc & 0x3] & 0xFF);
+            0[memory + sp] = (regs[*pc & 0x3] & 0xFF00) >> 8;
+            1[memory + sp] = (regs[*pc & 0x3] & 0xFF);
             sp -= 2;
             ++pc;
             break;
@@ -98,7 +100,7 @@ void loop(unsigned char* memory) {
         case 0x16:
         case 0x17:
             sp += 2;
-            regs[*pc & 0x3] = (0[sp] << 8) | 1[sp];
+            regs[*pc & 0x3] = (0[memory + sp] << 8) | 1[memory + sp];
             ++pc;
             break;
         case 0x1F: // LJP
@@ -325,12 +327,12 @@ void loop(unsigned char* memory) {
         case 0xCE:
         case 0xCF:
             sp += 2 * (0[pc] & 0x0F);
-            pc = memory + ((0[sp] << 8) | 1[sp]);
+            pc = memory + ((0[memory + sp] << 8) | 1[memory + sp]);
             sp += 2;
             break;
         case 0xD0: // CAL
-            0[sp] = ((pc - memory + 3) & 0xFF00) >> 8;
-            1[sp] = ((pc - memory + 3) & 0xFF);
+            0[memory + sp] = ((pc - memory + 3) & 0xFF00) >> 8;
+            1[memory + sp] = ((pc - memory + 3) & 0xFF);
             sp -= 2;
             pc = memory + ((1[pc] << 8) | (2[pc]));
             break;
@@ -341,7 +343,7 @@ void loop(unsigned char* memory) {
             pc = ((memory[regs[0[pc] & 0x3] + 0] << 8)
                 |(memory[regs[0[pc] & 0x3] + 1])) + memory;
             sp = ((memory[regs[0[pc] & 0x3] + 1] << 8)
-                |(memory[regs[0[pc] & 0x3] + 2])) + memory;
+                |(memory[regs[0[pc] & 0x3] + 2]));
             break;
         case 0xD8: // CAR
         case 0xD9:
@@ -349,8 +351,8 @@ void loop(unsigned char* memory) {
         case 0xDB:
             memory[regs[0[pc] & 0x3] + 0] = ((pc - memory + 3) & 0xFF00) >> 8;
             memory[regs[0[pc] & 0x3] + 1] = ((pc - memory + 3) & 0xFF);
-            memory[regs[0[pc] & 0x3] + 1] = ((sp - memory) & 0xFF00) >> 8;
-            memory[regs[0[pc] & 0x3] + 2] = ((sp - memory) & 0xFF);
+            memory[regs[0[pc] & 0x3] + 1] = ((sp) & 0xFF00) >> 8;
+            memory[regs[0[pc] & 0x3] + 2] = ((sp) & 0xFF);
             pc = memory + ((1[pc] << 8) | 2[pc]);
             break;
         case 0xE8: // CLI
@@ -398,18 +400,21 @@ void loop(unsigned char* memory) {
             --regs[(*pc++) & 0x3];
             break;
         }
-        if(ticks == 250000) {
+
+        // synchronize every 250000 instructions or so
+        if(ticks == INSTR_PER_FRAME) {
             ticks = 0;
-            clock_gettime(CLOCK_MONOTONIC, &t2);
             SLEEP(t2, t1);
         }
-        if(!(--cnt)) return;
     }
 }
 
 unsigned char memory[65536];
 
-int main() {
+void load_test_program1()
+{
+    // increments memory location 0x8000 by 7
+    // these are the raw op-codes put in memory
     memory[0] = 0xF4; // MVI AX, 1
     memory[1] = 0x01;
     memory[2] = 0x01;
@@ -429,5 +434,10 @@ int main() {
     memory[16] = 0x00;
     memory[17] = 0x74; // STO BX, AX
     memory[18] = 0x04; // RST
+}
+
+int main()
+{
+    load_test_program1();
     loop(memory);
 }
