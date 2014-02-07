@@ -9,7 +9,11 @@ long cnt = 100000;
 #define DIFF(FIN, INI) (FIN - INI)
 // dafuq was I thinking with this?
 //    ( (FIN > INI) ? (FIN - INI) : (FIN + ( ((clock_t)(0) - 1) - INI)) )
-#define NANOSLEEPARG(FIN, INI) ((30l - DIFF(FIN, INI)) & 0x1F)
+#define NANOSLEEPARG(FIN, INI) ((300002l - DIFF(FIN+1, INI)))
+#define SLEEP(FIN, INI) do{\
+    tn = INI + 32l - FIN; \
+    while(clock() - FIN + INI < 32l); \
+}while(0)
 
 void loop(unsigned char* memory) {
     struct work_s {
@@ -30,7 +34,7 @@ void loop(unsigned char* memory) {
     unsigned char is[sizeof(struct work_s)];
 
     clock_t t1, t2;
-    struct timespec ts = { 0l, 0l };
+    clock_t tn;
 
     memset(regs, 0, 4 * sizeof(short));
     memset(&state, 0, sizeof(short));
@@ -393,9 +397,7 @@ void loop(unsigned char* memory) {
         }
         t2 = clock();
         //printf("%ld : %ld : %ld\n", t1, t2, NANOSLEEPARG(t2, t1));
-        ts.tv_nsec = NANOSLEEPARG(t2, t1);
-        nanosleep(&ts, NULL);
-        //printf("%x\n", *(short*)(&memory[0x8000]));
+        SLEEP(t2, t1);
         if(!(--cnt)) return;
     }
 }
