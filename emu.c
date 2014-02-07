@@ -21,6 +21,10 @@ sig_atomic_t keep_going = 1;
     state = ( (~(1 << S)) & state ) | (( (regs[R] & 0x8000) != 0 ) << S); \
 }while(0)
 
+#define SET_ZERO_FLAGH(R) do{\
+    state = ( (~(1 << Z)) & state ) | (( (regs[R] & 0xFF00) == 0 ) << Z); \
+}while(0)
+
 #define SET_CARRY_FLAG(R) do{\
     state = ( (~(1 << C)) & state ) | ((( (R) & 0xFFFF0000) != 0) << C); \
 }while(0)
@@ -162,6 +166,8 @@ void loop(unsigned char* memory) {
         case 0x58: case 0x59: case 0x5A: case 0x5B:
         case 0x5C: case 0x5D: case 0x5E: case 0x5F: // MOV
             regs[((*pc) & 0x0C) >> 2] = regs[(*pc) & 0x03];
+            SET_ZERO_FLAG(((*pc) & 0x0C) >> 2);
+            SET_SIGN_FLAG(((*pc) & 0x0C) >> 2);
             ++pc;
             break;
         case 0x60: case 0x61: case 0x62: case 0x63:
@@ -171,6 +177,8 @@ void loop(unsigned char* memory) {
             regs[((*pc) & 0x0C) >> 2] =
                 (regs[((*pc) & 0x0C) >> 2] & 0x00FF)
                 | (memory[(unsigned short)regs[(*pc) & 0x03]] << 8);
+            SET_ZERO_FLAGH(((*pc) & 0x0C) >> 2);
+            SET_SIGN_FLAG(((*pc) & 0x0C) >> 2);
             ++pc;
             break;
         case 0x70: case 0x71: case 0x72: case 0x73:
@@ -178,6 +186,8 @@ void loop(unsigned char* memory) {
         case 0x78: case 0x79: case 0x7A: case 0x7B:
         case 0x7C: case 0x7D: case 0x7E: case 0x7F: // STO
             memory[(unsigned short)regs[((*pc) & 0x0C) >> 2]] = (0xFF00 & regs[(*pc) & 0x03]) >> 8;
+            SET_ZERO_FLAGH(((*pc) & 0x03));
+            SET_SIGN_FLAG(((*pc) & 0x03));
             ++pc;
             break;
         case 0x80: // ADD
@@ -345,6 +355,8 @@ void loop(unsigned char* memory) {
                 state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x8000u >> regs[1[pc] & 0x3]));
                 regs[(1[pc] & 0xC) >> 2] <<= regs[1[pc] & 0x3];
             }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
@@ -356,6 +368,8 @@ void loop(unsigned char* memory) {
                 state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x1u << regs[1[pc] & 0x3]));
                 regs[(1[pc] & 0xC) >> 2] >>= regs[1[pc] & 0x3];
             }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
@@ -366,6 +380,8 @@ void loop(unsigned char* memory) {
             break;
         case 0xE0: case 0xE1: case 0xE2: case 0xE3: // LAA
             regs[0[pc] & 0x3] = (0xFF & regs[0[pc] & 0x3]) | memory[(1[pc] << 8) || 2[pc]];
+            SET_ZERO_FLAG(((*pc) & 0x03));
+            SET_SIGN_FLAG(((*pc) & 0x03));
             pc += 3;
             ticks++;
             ticks++;
@@ -423,38 +439,56 @@ void loop(unsigned char* memory) {
         case 0xF0: // LDI
             regs[(1[pc] & 0xC) >> 2] = (0xFF & regs[(1[pc] & 0xC) >> 2]);
             regs[(1[pc] & 0xC) >> 2] |= memory[((1[pc] & 0xF0) >> 4) + regs[1[pc] & 0x3]] << 8;
+            SET_ZERO_FLAGH(((*pc) & 0x0C) >> 2);
+            SET_SIGN_FLAG(((*pc) & 0x0C) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0xF1: // STI
             memory[regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
                 (regs[1[pc] & 0x3] & 0xFF00) >> 8;
+            SET_ZERO_FLAGH(((*pc) & 0x03));
+            SET_SIGN_FLAG(((*pc) & 0x03));
             pc += 2;
             ticks++;
             break;
         case 0xF2: // LRI
             regs[(1[pc] & 0x30) >> 4] = (0xFF & regs[(1[pc] & 0x30) >> 4]);
             regs[(1[pc] & 0x30) >> 4] |= memory[((1[pc] & 0xC0) >> 6) + regs[1[pc] & 0x3] + regs[(1[pc] & 0xC) >> 2]] << 8;
+            SET_ZERO_FLAGH(((*pc) & 0x30) >> 4);
+            SET_SIGN_FLAG(((*pc) & 0x30) >> 4);
             pc += 2;
             ticks++;
             break;
         case 0xF3: // SRI
             memory[regs[(1[pc] & 0x30) >> 4] + regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
                 (regs[1[pc] & 0x3] & 0xFF00) >> 8;
+            SET_ZERO_FLAGH(((*pc) & 0x03));
+            SET_SIGN_FLAG(((*pc) & 0x03));
             pc += 2;
             ticks++;
             break;
         case 0xF4: case 0xF5: case 0xF6: case 0xF7: // MVI
             regs[(*pc) & 0x03] = (1[pc] << 8) | (2[pc]);
             pc += 3;
+            SET_ZERO_FLAG(((*pc) & 0x3));
+            SET_SIGN_FLAG(((*pc) & 0x3));
             ticks++;
             ticks++;
             break;
         case 0xF8: case 0xF9: case 0xFA: case 0xFB: // INC
+            SET_CARRY_FLAG((unsigned int)regs[(*pc) & 0x3] + 1);
             ++regs[(*pc++) & 0x3];
+            SET_ZERO_FLAG(((*pc) & 0x3));
+            SET_SIGN_FLAG(((*pc) & 0x3));
+            ticks++;
             break;
         case 0xFC: case 0xFD: case 0xFE: case 0xFF: // DEC
+            SET_CARRY_FLAG((unsigned int)regs[(*pc) & 0x3] - 1);
             --regs[(*pc++) & 0x3];
+            SET_ZERO_FLAG(((*pc) & 0x3));
+            SET_SIGN_FLAG(((*pc) & 0x3));
+            ticks++;
             break;
         }
 
