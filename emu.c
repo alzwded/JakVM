@@ -105,6 +105,8 @@ void loop(unsigned char* memory) {
             break;
         case 0x1F: // LJP
             pc = memory + ((1[pc] << 8) | 2[pc]);
+            ticks++;
+            ticks++;
             break;
         case 0x24: // JMR
         case 0x25:
@@ -210,6 +212,7 @@ void loop(unsigned char* memory) {
             else
                 regs[(1[pc] & 0xC) >> 2] += regs[1[pc] & 0x3];
             pc += 2;
+            ticks++;
             break;
         case 0x81: // SUB
             if(1[pc] & 0xF0)
@@ -217,12 +220,14 @@ void loop(unsigned char* memory) {
             else
                 regs[(1[pc] & 0xC) >> 2] -= regs[1[pc] & 0x3];
             pc += 2;
+            ticks++;
             break;
         case 0x82: // MUL
             if(1[pc] & 0xF0)
                 regs[(1[pc] & 0xC) >> 2] *= (1[pc] & 0xF0) >> 4;
             else
                 regs[(1[pc] & 0xC) >> 2] *= regs[1[pc] & 0x3];
+            ticks++;
             pc += 2;
             break;
         case 0x83: // DIV
@@ -231,6 +236,7 @@ void loop(unsigned char* memory) {
             else
                 regs[(1[pc] & 0xC) >> 2] /= regs[1[pc] & 0x3];
             pc += 2;
+            ticks++;
             break;
         case 0x84: // MOD
             if(1[pc] & 0xF0)
@@ -238,6 +244,7 @@ void loop(unsigned char* memory) {
             else
                 regs[(1[pc] & 0xC) >> 2] %= regs[1[pc] & 0x3];
             pc += 2;
+            ticks++;
             break;
         case 0x88: // NEG
         case 0x89:
@@ -335,6 +342,8 @@ void loop(unsigned char* memory) {
             1[memory + sp] = ((pc - memory + 3) & 0xFF);
             sp -= 2;
             pc = memory + ((1[pc] << 8) | (2[pc]));
+            ticks++;
+            ticks++;
             break;
         case 0xD4: // RCR
         case 0xD5:
@@ -354,31 +363,41 @@ void loop(unsigned char* memory) {
             memory[regs[0[pc] & 0x3] + 1] = ((sp) & 0xFF00) >> 8;
             memory[regs[0[pc] & 0x3] + 2] = ((sp) & 0xFF);
             pc = memory + ((1[pc] << 8) | 2[pc]);
+            ticks++;
+            ticks++;
             break;
         case 0xE8: // CLI
             state &= ~(1[pc] << 8);
             pc += 2;
+            ticks++;
             break;
         case 0xE9: // JMP
             pc += 1[pc];
+            ticks++;
             break;
         case 0xEA: // JIZ
             if(state & (1 << Z)) pc += 1[pc];
+            ticks++;
             break;
         case 0xEB: // JNZ
             if(!(state & (1 << Z))) pc += 1[pc];
+            ticks++;
             break;
         case 0xEC: // JLT
             if(state & (1 << S)) pc += 1[pc];
+            ticks++;
             break;
         case 0xED: // JGE
             if(!(state & (1 << S))) pc += 1[pc];
+            ticks++;
             break;
         case 0xEE: // JOF
             if(state & (1 << C)) pc += 1[pc];
+            ticks++;
             break;
         case 0xEF: // JNF
             if(!(state & (1 << C))) pc += 1[pc];
+            ticks++;
             break;
         case 0xF4: // MVI
         case 0xF5:
@@ -386,6 +405,8 @@ void loop(unsigned char* memory) {
         case 0xF7:
             regs[(*pc) & 0x03] = (1[pc] << 8) | (2[pc]);
             pc += 3;
+            ticks++;
+            ticks++;
             break;
         case 0xF8: // INC
         case 0xF9:
