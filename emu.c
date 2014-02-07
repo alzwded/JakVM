@@ -518,14 +518,13 @@ void load_test_program1()
     memory[9] = 0xF5; // MVI BX, 0x8000
     memory[10] = 0x80;
     memory[11] = 0x00;
-    memory[12] = 0x65; // LOD BX, BX
-    memory[13] = 0x80; // ADD AX, BX
-    memory[14] = 0x01;
-    memory[15] = 0xF5; // MVI BX, 0x8000
-    memory[16] = 0x80;
-    memory[17] = 0x00;
-    memory[18] = 0x74; // STO BX, AX
-    memory[19] = 0x04; // RST
+    memory[12] = 0x11; // PUS BX
+    memory[13] = 0x65; // LOD BX, BX
+    memory[14] = 0x80; // ADD AX, BX
+    memory[15] = 0x01;
+    memory[16] = 0x15; // POP BX
+    memory[17] = 0x74; // STO BX, AX
+    memory[18] = 0x04; // RST
 }
 
 int main()
