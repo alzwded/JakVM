@@ -74,7 +74,7 @@ void loop(unsigned char* memory) {
         case 0x08: // CMP
             state = (0x5FFF & state)
                 | ((regs[0] == regs[1]) << Z)
-                | ((regs[0] < regs[1]) << S);
+                | (((signed short)regs[0] < (signed short)regs[1]) << S);
             ++pc;
             break;
         case 0x09: // RET
