@@ -13,6 +13,18 @@ sig_atomic_t keep_going = 1;
     clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL); \
 }while(0)
 
+#define SET_ZERO_FLAG(R) do{\
+    state = ( (~(1 << Z)) & state ) | (( regs[R] == 0 ) << Z); \
+}while(0)
+
+#define SET_SIGN_FLAG(R) do{\
+    state = ( (~(1 << S)) & state ) | (( (regs[R] & 0x8000) != 0 ) << S); \
+}while(0)
+
+#define SET_CARRY_FLAG(R) do{\
+    state = ( (~(1 << C)) & state ) | ((( (R) & 0xFFFF0000) != 0) << C); \
+}while(0)
+
 void loop(unsigned char* memory) {
     struct work_s {
         unsigned short REGS[4]; // AX, BX, CX, SP
@@ -169,51 +181,100 @@ void loop(unsigned char* memory) {
             ++pc;
             break;
         case 0x80: // ADD
-            if(1[pc] & 0xF0)
+            if(1[pc] & 0xF0) {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] + (unsigned int)((1[pc] & 0xF0) >> 4));
                 regs[(1[pc] & 0xC) >> 2] += (1[pc] & 0xF0) >> 4;
-            else
+            } else {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] + (unsigned int)regs[1[pc] & 0x3]);
                 regs[(1[pc] & 0xC) >> 2] += regs[1[pc] & 0x3];
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0x81: // SUB
-            if(1[pc] & 0xF0)
+            if(1[pc] & 0xF0) {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] - (unsigned int)((1[pc] & 0xF0) >> 4));
                 regs[(1[pc] & 0xC) >> 2] -= (1[pc] & 0xF0) >> 4;
-            else
+            } else {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] - (unsigned int)regs[1[pc] & 0x3]);
                 regs[(1[pc] & 0xC) >> 2] -= regs[1[pc] & 0x3];
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0x82: // MUL
-            if(1[pc] & 0xF0)
+            if(1[pc] & 0xF0) {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] * (unsigned int)((1[pc] & 0xF0) >> 4));
                 regs[(1[pc] & 0xC) >> 2] *= (1[pc] & 0xF0) >> 4;
-            else
+            } else {
+                SET_CARRY_FLAG((unsigned int)regs[(1[pc] & 0xC) >> 2] * (unsigned int)regs[1[pc] & 0x3]);
                 regs[(1[pc] & 0xC) >> 2] *= regs[1[pc] & 0x3];
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             ticks++;
             pc += 2;
             break;
         case 0x83: // DIV
-            if(1[pc] & 0xF0)
-                regs[(1[pc] & 0xC) >> 2] /= (1[pc] & 0xF0) >> 4;
-            else
-                regs[(1[pc] & 0xC) >> 2] /= regs[1[pc] & 0x3];
+            if(1[pc] & 0xF0) {
+                if(((1[pc] & 0xF0) >> 4) == 0) {
+                    state |= (1 << C);
+                    regs[(1[pc] & 0xC) >> 2] = 0x7FFF | (regs[(1[pc] & 0xC) >> 2] & 0x8000);
+                } else {
+                    state &= ~(1 << C);
+                    regs[(1[pc] & 0xC) >> 2] /= (1[pc] & 0xF0) >> 4;
+                }
+            } else {
+                if(regs[1[pc] & 0x3] == 0) {
+                    state |= (1 << C);
+                    regs[(1[pc] & 0xC) >> 2] = 0x7FFF | (regs[(1[pc] & 0xC) >> 2] & 0x8000);
+                } else {
+                    state &= ~(1 << C);
+                    regs[(1[pc] & 0xC) >> 2] /= regs[1[pc] & 0x3];
+                }
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0x84: // MOD
-            if(1[pc] & 0xF0)
-                regs[(1[pc] & 0xC) >> 2] %= (1[pc] & 0xF0) >> 4;
-            else
-                regs[(1[pc] & 0xC) >> 2] %= regs[1[pc] & 0x3];
+            if(1[pc] & 0xF0) {
+                if(((1[pc] & 0xF0) >> 4) == 0) {
+                    state |= (1 << C);
+                    regs[(1[pc] & 0xC) >> 2] = 0x7FFF | (regs[(1[pc] & 0xC) >> 2] & 0x8000);
+                } else {
+                    state &= ~(1 << C);
+                    regs[(1[pc] & 0xC) >> 2] %= (1[pc] & 0xF0) >> 4;
+                }
+            } else {
+                if(regs[1[pc] & 0x3] == 0) {
+                    state |= (1 << C);
+                    regs[(1[pc] & 0xC) >> 2] = 0x7FFF | (regs[(1[pc] & 0xC) >> 2] & 0x8000);
+                } else {
+                    state &= ~(1 << C);
+                    regs[(1[pc] & 0xC) >> 2] %= regs[1[pc] & 0x3];
+                }
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0x88: case 0x89: case 0x8A: case 0x8B: // NEG
             regs[(*pc) & 0x3] = -regs[(*pc) & 0x3];
+            SET_ZERO_FLAG((1[pc] & 0x3));
+            SET_SIGN_FLAG((1[pc] & 0x3));
             ++pc;
             break;
         case 0x8C: case 0x8D: case 0x8E: case 0x8F: // NOT
             regs[(*pc) & 0x3] = ~regs[(*pc) & 0x3];
+            SET_ZERO_FLAG((1[pc] & 0x3));
+            SET_SIGN_FLAG((1[pc] & 0x3));
             ++pc;
             break;
         case 0x90: case 0x91: case 0x92: case 0x93:
@@ -221,6 +282,8 @@ void loop(unsigned char* memory) {
         case 0x98: case 0x99: case 0x9A: case 0x9B:
         case 0x9C: case 0x9D: case 0x9E: case 0x9F: // AND
             regs[(0[pc] & 0xC) >> 2] &= regs[0[pc] & 0x3];
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             ++pc;
             break;
         case 0xA0: case 0xA1: case 0xA2: case 0xA3:
@@ -228,6 +291,8 @@ void loop(unsigned char* memory) {
         case 0xA8: case 0xA9: case 0xAA: case 0xAB:
         case 0xAC: case 0xAD: case 0xAE: case 0xAF: // IOR
             regs[(0[pc] & 0xC) >> 2] |= regs[0[pc] & 0x3];
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             ++pc;
             break;
         case 0xB0: case 0xB1: case 0xB2: case 0xB3:
@@ -235,6 +300,8 @@ void loop(unsigned char* memory) {
         case 0xB8: case 0xB9: case 0xBA: case 0xBB:
         case 0xBC: case 0xBD: case 0xBE: case 0xBF: // XOR
             regs[(0[pc] & 0xC) >> 2] ^= regs[0[pc] & 0x3];
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             ++pc;
             break;
         case 0xC0: case 0xC1: case 0xC2: case 0xC3:
