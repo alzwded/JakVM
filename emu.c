@@ -127,12 +127,16 @@ void loop(unsigned char* memory) {
         case 0x10: case 0x11: case 0x12: case 0x13: // PUS
             0[memory + sp] = (regs[*pc & 0x3] & 0xFF00) >> 8;
             1[memory + sp] = (regs[*pc & 0x3] & 0xFF);
+            SET_ZERO_FLAG(0[pc] & 0x3);
+            SET_SIGN_FLAG(0[pc] & 0x3);
             sp -= 2;
             ++pc;
             break;
         case 0x14: case 0x15: case 0x16: case 0x17: // POP
             sp += 2;
             regs[*pc & 0x3] = (0[memory + sp] << 8) | 1[memory + sp];
+            SET_ZERO_FLAG(0[pc] & 0x3);
+            SET_SIGN_FLAG(0[pc] & 0x3);
             ++pc;
             break;
         case 0x1F: // LJP
