@@ -1,12 +1,15 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <signal.h>
 sig_atomic_t keep_going = 1;
+long cnt = 100000;
 
 #define DIFF(FIN, INI) (FIN - INI)
 // dafuq was I thinking with this?
 //    ( (FIN > INI) ? (FIN - INI) : (FIN + ( ((clock_t)(0) - 1) - INI)) )
+#define NANOSLEEPARG(FIN, INI) ((30l - DIFF(FIN, INI)) & 0x1F)
 
 void loop(unsigned char* memory) {
     struct work_s {
@@ -30,9 +33,10 @@ void loop(unsigned char* memory) {
     struct timespec ts = { 0l, 0l };
 
     memset(regs, 0, 4 * sizeof(short));
+    memset(&state, 0, sizeof(short));
     pc = 0x0000 + memory;
     sp = 0xBFFE + memory;
-    memset(is, 0, 104 * sizeof(unsigned char));
+    memset(is, 0, sizeof(struct work_s));
 
     while(keep_going) {
         t1 = clock();
@@ -151,7 +155,7 @@ void loop(unsigned char* memory) {
         case 0x5D:
         case 0x5F:
             regs[((*pc) & 0x0C) >> 2] = regs[(*pc) & 0x03];
-            pc += 2;
+            ++pc;
             break;
         case 0x60: // LOD
         case 0x61:
@@ -168,8 +172,10 @@ void loop(unsigned char* memory) {
         case 0x6C:
         case 0x6D:
         case 0x6F:
-            regs[((*pc) & 0x0C) >> 2] = (memory[regs[(*pc) & 0x03]] << 8) | (memory[regs[(*pc) & 0x03] + 1]);
-            pc += 2;
+            regs[((*pc) & 0x0C) >> 2] =
+                (regs[((*pc) & 0x0C) >> 2] & 0x00FF)
+                | (memory[(unsigned short)regs[(*pc) & 0x03]] << 8);
+            ++pc;
             break;
         case 0x70: // STO
         case 0x71:
@@ -186,8 +192,7 @@ void loop(unsigned char* memory) {
         case 0x7C:
         case 0x7D:
         case 0x7F:
-            memory[regs[((*pc) & 0x0C)] >> 2] = (0xF0 & regs[(*pc) & 0x03]) >> 8;
-            memory[(regs[((*pc) & 0x0C)] >> 2) + 1] = (0x0F & regs[(*pc) & 0x03]);
+            memory[(unsigned short)regs[((*pc) & 0x0C) >> 2]] = (0xFF00 & regs[(*pc) & 0x03]) >> 8;
             ++pc;
             break;
         case 0x80: // ADD
@@ -387,12 +392,35 @@ void loop(unsigned char* memory) {
             break;
         }
         t2 = clock();
-        ts.tv_nsec = (30l - DIFF(t2 - 2, t1)) & 0x1F;
+        //printf("%ld : %ld : %ld\n", t1, t2, NANOSLEEPARG(t2, t1));
+        ts.tv_nsec = NANOSLEEPARG(t2, t1);
         nanosleep(&ts, NULL);
+        //printf("%x\n", *(short*)(&memory[0x8000]));
+        if(!(--cnt)) return;
     }
 }
 
+unsigned char memory[65536];
+
 int main() {
-    abort();
-    loop(NULL);
+    memory[0] = 0xF4; // MVI AX, 1
+    memory[1] = 0x01;
+    memory[2] = 0x01;
+    memory[3] = 0xF5; // MVI BX, 1
+    memory[4] = 0x06;
+    memory[5] = 0x06;
+    memory[6] = 0x80; // ADD AX, BX
+    memory[7] = 0x01; // 
+    memory[8] = 0xF5; // MVI BX, 0x8000
+    memory[9] = 0x80;
+    memory[10] = 0x00;
+    memory[11] = 0x65; // LOD BX, BX
+    memory[12] = 0x80; // ADD AX, BX
+    memory[13] = 0x01;
+    memory[14] = 0xF5; // MVI BX, 0x8000
+    memory[15] = 0x80;
+    memory[16] = 0x00;
+    memory[17] = 0x74; // STO BX, AX
+    memory[18] = 0x04; // RST
+    loop(memory);
 }

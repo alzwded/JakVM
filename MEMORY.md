@@ -3,7 +3,7 @@ Memory layout
 
 This describes the memory layout of my dream machine.
 
-There are 32k addresses. They are split into a number of groups:
+There are 64k addresses. They are split into a number of groups:
 
 | description   | ranges          | size  | KiB |
 |---------------|-----------------|-------|-----|
