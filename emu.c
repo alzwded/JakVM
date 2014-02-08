@@ -1,15 +1,30 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <signal.h>
+#include <string.h> // mem*** functions
+#include <time.h> // time functions, data types
+#include <signal.h> // sig_atomic_t
+
+/* TODO
+    SWP
+        this has more to do with when I actually implement the UI part of
+        this here nice emu
+    move code
+        the unsigned char memory declaration and main should be moved
+        elsewhere
+        this only makes sense after I start implementing the UI since there
+        are no other files at the moment
+*/
+
 sig_atomic_t keep_going = 1;
 
 // target 250000 instructions / 60Hz frame
-#define INSTR_PER_FRAME 250000
+// 17M ns just so happen to equal 17ms, which is about a 60th of a second
+// give or take (take 20ms)
+#define FRAME_LEN 17000000l
+#define INSTR_PER_FRAME 250000l
+// why does clock_nanosleep work as intended but nanosleep yields different
+//    sleep amounts on different computers?
 #define SLEEP(FIN, INI) do{\
     ts.tv_sec = 0; \
-    ts.tv_nsec = 17000000 - (FIN.tv_nsec - INI.tv_nsec); \
+    ts.tv_nsec = FRAME_LEN - (FIN.tv_nsec - INI.tv_nsec); \
     clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL); \
 }while(0)
 
@@ -25,6 +40,7 @@ sig_atomic_t keep_going = 1;
     state = ( (~(1 << Z)) & state ) | (( (regs[R] & 0xFF00) == 0 ) << Z); \
 }while(0)
 
+// R here is actually a 32bit integer, not a register number
 #define SET_CARRY_FLAG(R) do{\
     state = ( (~(1 << C)) & state ) | ((( (R) & 0xFFFF0000) != 0) << C); \
 }while(0)
@@ -33,6 +49,9 @@ void loop(unsigned char* memory) {
     struct work_s {
         unsigned short REGS[4]; // AX, BX, CX, SP
         unsigned char* PC;
+        short STATE; // RS:RF
+    } work;
+// alias bit positions to their symbolic names
 #define Z 15
 #define C 14
 #define S 13
@@ -41,17 +60,18 @@ void loop(unsigned char* memory) {
 #define BS 5
 #define SWINT 1
 #define GEI 0
-        short STATE; // RS:RF
-    } work;
+    unsigned char is[sizeof(struct work_s)];
+// storage independent aliases
 #define regs work.REGS
 #define pc work.PC
 #define sp work.REGS[3]
 #define state work.STATE
-    unsigned char is[sizeof(struct work_s)];
 
     // time and synchronization
     struct timespec t1, t2;
     struct timespec ts;
+    // okay, we don't actually synchronize at 250000 instructions, but
+    // after 250000 ticks (MVI for example "takes" 3 ticks)
     unsigned long ticks = 0;
 
     // set regs to 0
@@ -63,8 +83,6 @@ void loop(unsigned char* memory) {
     // except for sp, which starts at 0xBFFE
     sp = 0xBFFE;
     memset(is, 0, sizeof(struct work_s));
-
-    // TODO set flags after instructions
 
     while(keep_going) {
         // begin a synchronization frame
@@ -351,13 +369,28 @@ void loop(unsigned char* memory) {
             ticks++;
             ticks++;
             break;
+// BEGIN MACRO FUN
         case 0xDC: // SCL
             if(1[pc] & 0xF0) {
-                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x8000u >> ((1[pc] & 0xF0) >> 4)));
+                short newState = state;
+#undef state
+#define state newState
+                SET_CARRY_FLAG(((unsigned int)regs[(1[pc] & 0xC) >> 2] << ((1[pc] & 0xF0) >> 4) ) & 0x0001FFFF);
+#undef state
+#define state work.STATE
                 regs[(1[pc] & 0xC) >> 2] <<= (1[pc] & 0xF0) >> 4;
+                if(state & (1 << C)) regs[(1[pc] & 0xC) >> 2] |= ((1 << ((1[pc] & 0xF0) >> 4)) - 1);
+                state = newState;
             } else {
-                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x8000u >> regs[1[pc] & 0x3]));
+                short newState = state;
+#undef state
+#define state newState
+                SET_CARRY_FLAG(((unsigned int)regs[(1[pc] & 0xC) >> 2] << regs[1[pc] & 0x3]) & 0x0001FFFF);
+#undef state
+#define state work.STATE
                 regs[(1[pc] & 0xC) >> 2] <<= regs[1[pc] & 0x3];
+                if(state & (1 << C)) regs[(1[pc] & 0xC) >> 2] |= ((1 << regs[1[pc] & 0x3]) - 1);
+                state = newState;
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
@@ -366,47 +399,140 @@ void loop(unsigned char* memory) {
             break;
         case 0xDD: // SCR
             if(1[pc] & 0xF0) {
-                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x1u << ((1[pc] & 0xF0) >> 4)));
-                regs[(1[pc] & 0xC) >> 2] >>= (1[pc] & 0xF0) << 4;
+#define R regs[(1[pc] & 0xC) >> 2]
+#define AMOUNT ((1[pc] & 0xF0) >> 4)
+                short newState = (0xBF & state) |
+                    (((((R << 1) >> AMOUNT) & 0x1) != 0) << C);
+/* let's take some time to explain the following two lines, since I imagine
+        they are not entirely clear. The behaviour of the SCR instruction
+        is documented in IS.md.
+   CARRY_MASK essentially is a short int mask which sets the
+        sign bit (0x8000) to 1 if Carry was set, or 0 if Carry was not set
+   Then, this mask is OR'd over R, thus setting R's sign bit to the value of
+        the Carry flag
+   Then, the result is cast to a signed short. This is important for what is
+        to come
+   Next we expand it to a signed int. Since it was a signed short, 
+        the new high 2 bytes are padded with 1's if the expanded short 
+        was negative, or 0 if the expanded short was positive.
+        (it depends on whether CARRY_MASK was 0x8000 or 0)
+   Then, we create a mask for the bits that were shifted in. I.e.
+        0xFFFF0000 >> AMOUNT. This makes sure we keep only the bits that
+        were shifted in and we don't affect R's original bits. This means
+        we can then safely OR this over (R >> AMOUNT), but we're not done
+        yet
+   Lastly, we &it with 0xFFFF and cast the result back to an unsigned short,
+        thus obtaining the bits that were shifted in with the value of
+        the Carry flag, as per specification
+   This is a good example of the power of C and all the stuff you can do
+        with it without declaring any compiler-confusing variables.
+*/
+#define CARRY_MASK ((((state) & (1 << C)) != 0) << 15)
+#define R_CARRY_BITS (unsigned short)((((signed int)((signed short)((R | CARRY_MASK))) >> AMOUNT) & (0xFFFF0000 >> AMOUNT)) & 0xFFFF)
+                R = R_CARRY_BITS | (R >> AMOUNT);
+                state = newState;
+#undef AMOUNT
             } else {
-                state = (0xBF & state) | (regs[(1[pc] & 0xC) >> 2] & (0x1u << regs[1[pc] & 0x3]));
-                regs[(1[pc] & 0xC) >> 2] >>= regs[1[pc] & 0x3];
+#define AMOUNT (regs[1[pc] & 0x3] % 16)
+                short newState = (0xBF & state) |
+                    (((((R << 1) >> AMOUNT) & 0x1) != 0) << C);
+                R = R_CARRY_BITS | (R >> AMOUNT);
+                state = newState;
+#undef R_CARRY_BITS
+#undef AMOUNT
+#undef R
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
+// END MACRO FUN
         case 0xDF: // IRF
-            if((state & 0xFF) & 1[pc]) state = (0x7F & state) | 0x80;
+            if((state & 0xFF) & 1[pc]) state |= (1 << Z);
             ticks++;
             pc += 2;
             break;
         case 0xE0: case 0xE1: case 0xE2: case 0xE3: // LAA
-            regs[0[pc] & 0x3] = (0xFF & regs[0[pc] & 0x3]) | memory[(1[pc] << 8) || 2[pc]];
-            SET_ZERO_FLAG(((*pc) & 0x03));
+            regs[0[pc] & 0x3] = (0xFF & regs[0[pc] & 0x3])
+                | (memory[(1[pc] << 8) | 2[pc]] << 8);
+            SET_ZERO_FLAGH(((*pc) & 0x03));
             SET_SIGN_FLAG(((*pc) & 0x03));
             pc += 3;
             ticks++;
             ticks++;
             break;
+// BEGIN MACRO FUN
         case 0xE4: // ROL
-            // TODO
+            if(1[pc] & 0xF0) {
+#define R regs[(1[pc] & 0xC) >> 2]
+#define AMOUNT ((1[pc] & 0xF0) >> 4)
+                R = (R << AMOUNT) | (R >> (16 - AMOUNT));
+#undef AMOUNT
+            } else {
+#define AMOUNT (regs[1[pc] & 0x3] % 16)
+                R = (R << AMOUNT) | (R >> (16 - AMOUNT));
+#undef AMOUNT
+#undef R
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0xE5: // ROR
+            if(1[pc] & 0xF0) {
+#define R regs[(1[pc] & 0xC) >> 2]
+#define AMOUNT ((1[pc] & 0xF0) >> 4)
+                R = (R >> AMOUNT) | (R << (16 - AMOUNT));
+#undef AMOUNT
+            } else {
+#define AMOUNT (regs[1[pc] & 0x3] % 16)
+                R = (R >> AMOUNT) | (R << (16 - AMOUNT));
+#undef AMOUNT
+#undef R
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
         case 0xE6: // SHL
+            if(1[pc] & 0xF0) {
+#define R regs[(1[pc] & 0xC) >> 2]
+#define AMOUNT ((1[pc] & 0xF0) >> 4)
+                R = (R << AMOUNT);
+#undef AMOUNT
+            } else {
+#define AMOUNT (regs[1[pc] & 0x3] % 16)
+                R = (R << AMOUNT);
+#undef AMOUNT
+#undef R
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
+
             pc += 2;
             ticks++;
             break;
         case 0xE7: // SHR
+            if(1[pc] & 0xF0) {
+#define R ((signed short)(regs[(1[pc] & 0xC) >> 2]))
+#define AMOUNT ((1[pc] & 0xF0) >> 4)
+                regs[(1[pc] & 0xC) >> 2] = (R >> AMOUNT);
+#undef AMOUNT
+            } else {
+#define AMOUNT (regs[1[pc] & 0x3] % 16)
+                regs[(1[pc] & 0xC) >> 2] = (R >> AMOUNT);
+#undef AMOUNT
+#undef R
+            }
+            SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
+            SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
             pc += 2;
             ticks++;
             break;
+// END MACRO FUN
         case 0xE8: // CLI
             state &= ~(1[pc] << 8) | 0xFF;
             pc += 2;
@@ -497,13 +623,14 @@ void loop(unsigned char* memory) {
         }
 
         // synchronize every 250000 instructions or so
-        if(ticks == INSTR_PER_FRAME) {
+        if(ticks >= INSTR_PER_FRAME) {
             ticks = 0;
             SLEEP(t2, t1);
         }
     }
 }
 
+// TODO move out of here
 unsigned char memory[65536];
 
 void load_test_program1()
