@@ -93,6 +93,7 @@ void loop(unsigned char* memory) {
         && (state & (0x00E2)))
         {
             state &= ~(1 << SWINT); // clear virtual SWINT flag
+            state &= ~(1 << GEI); // unset interrupt flag to avoid endless interrupt loop
             memcpy(is, &work, sizeof(struct work_s));
             pc = &0x00[memory];
         }
