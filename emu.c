@@ -432,6 +432,10 @@ void loop(unsigned char* memory) {
         the Carry flag, as per specification
    This is a good example of the power of C and all the stuff you can do
         with it without declaring any compiler-confusing variables.
+
+    Also note that doing a (signed int)((signed short)myUInt16) is the
+        easiest way to tell the compiler to generate the movswl
+        starting from an unsigned, otherwise it might zero extend it.
 */
 #define CARRY_MASK ((((state) & (1 << C)) != 0) << 15)
 #define R_CARRY_BITS (unsigned short)((((signed int)((signed short)((R | CARRY_MASK))) >> AMOUNT) & (0xFFFF0000 >> AMOUNT)) & 0xFFFF)
