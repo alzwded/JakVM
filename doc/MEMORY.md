@@ -46,10 +46,10 @@ External Memory
 | description           | range             | size  | count          |
 |-----------------------|-------------------|-------|----------------|
 | Read-only data        | 0xF000 - 0xF7FF   | 2048B | 256 * 2k  max  |
-| R/O data bank selector| 0xF800            |    1B |                |
+| R/O data bank selector| 0xF800            |    1B | = up to 512k   |
 | reserved              | 0xF801 - 0xF9FF   |  511B |                |
 | R/W data              | 0xFA00 - 0xFAFF   |  256B | 256 * 256 max  |
-| R/W data bank selector| 0xFB00            |    1B |                |
+| R/W data bank selector| 0xFB00            |    1B | = up to 64k    |
 | reserved              | 0xFB01 - 0xFBFF   |  255B |                |
 
 External memory is mapped into 0xF000 - 0xF7FF (2048 blocks) split in banks selectable by writing to 0xF800 which selects the bank. The bank needs to be available, if not, it is underfined what happens, you will probably read all 0s.
@@ -122,6 +122,36 @@ Well, you'll need to provide some 2k or 256 byte files and pass them as argument
 General I/O
 ===========
 
+| description           | range             | size (bytes)      |
+|-----------------------|-------------------|-------------------|
+| Joypad                | 0xFC00 - 0xFC0F   | 16                |
+| Sound                 | 0xFC10 - 0xFC1F   | 16                |
+| reserved              | 0xFC20 - 0xFFFF   | 992               |
+
+Joypad
+------
+
+| description           | range             |
+|-----------------------|-------------------|
+| reserved              | 0xFC00            |
+| reserved              | 0xFC01            |
+| reserved              | 0xFC02            |
+| reserved              | 0xFC03            |
+| reserved              | 0xFC04            |
+| reserved              | 0xFC05            |
+| reserved              | 0xFC06            |
+| D-pad                 | 0xFC07            |
+| ABCDLRStSel           | 0xFC08            |
+| reserved              | 0xFC09 - 0xFC0F   |
+
+0xFC07 is the D-pad in the form of `UP``LEFT``DOWN``RIGHT` where each is two bits wide.
+0xFC08 are the action buttons, in the order `A``B``C``D``L``R``start``select`.
+
+They are set each frame based on real-world input.
+
+Sound
+-----
+
 TODO more on sound, I think there might be a need for freq/ampl/fill vectors or something like that...
 
 | description           | range             |
@@ -129,12 +159,38 @@ TODO more on sound, I think there might be a need for freq/ampl/fill vectors or 
 | sound ch. 1 freq.     | 0xFC10            |
 | sound ch. 1 ampl.     | 0xFC11            |
 | sound ch. 1 fill      | 0xFC12            |
+| reserved              | 0xFC13            |
 | sound ch. 2 freq.     | 0xFC14            |
 | sound ch. 2 ampl.     | 0xFC15            |
 | sound ch. 2 fill      | 0xFC16            |
+| reserved              | 0xFC17            |
 | sound ch. 3 freq.     | 0xFC18            |
 | sound ch. 3 ampl.     | 0xFC19            |
 | sound ch. 3 fill      | 0xFC1A            |
+| reserved              | 0xFC1B            |
 | sound ch. 4 freq.     | 0xFC1C            |
 | sound ch. 4 ampl.     | 0xFC1D            |
-| sound ch. 4 fill      | 0xFC1E            |
+| sound ch. 5 freq.     | 0xFC1E            |
+| sound ch. 5 ampl.     | 0xFC1F            |
+
+Channels 1 and 2 are square waves. Channel 3 is triangle/sawtooth (the fill factor set to 128 makes it triangle, setting it to 255 makes it sawtooth). Channels 4 and 5 are sine waves.
+
+The freq. values are badly named. They are actual notes, with 128 being C4 (middle C), and each increment or decrement marks a quarter-tone above or under C4. For example:
+
+```
+.code
+; play E5, E above middle C, sine
+;  note height
+    MVI BX, 0FC1Ch
+    MVI AX, 0A000h  ; 160 << 8
+;  note intensity
+    INC BX
+    MVI AX, 08000h  ; meh amplitude
+    STO BX, AX
+```
+
+The values of values of 0x0 set to any of the fields silence that channel (because an amplitude of 0 means you can't hear it, a frequency of 0 means it doesn't exit, a fill of 0 means you are outputting for 0 seconds (or some other interpretation, it's still a frequency of 0)).
+
+In practice, only C0-B9 are (somewhat) supported. That's 240 values centered in 128, so 8-248 for the freq. fields.
+
+These are read on each frame and the output is adjusted.
