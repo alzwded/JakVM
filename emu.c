@@ -159,8 +159,8 @@ void loop(unsigned char* memory) {
             break;
         case 0x1F: // LJP
             pc = memory + ((1[pc] << 8) | 2[pc]);
-            ticks++;
-            ticks++;
+            ++ticks;
+            ++ticks;
             break;
         case 0x24: case 0x25: case 0x26: case 0x27: // JMR
             pc = memory + regs[(*pc) & 0x3];
@@ -222,8 +222,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0x81: // SUB
             if(1[pc] & 0xF0) {
@@ -235,8 +236,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0x82: // MUL
             if(1[pc] & 0xF0) {
@@ -248,8 +250,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            ticks++;
-            pc += 2;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0x83: // DIV
             if(1[pc] & 0xF0) {
@@ -271,8 +274,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0x84: // MOD
             if(1[pc] & 0xF0) {
@@ -294,8 +298,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0x88: case 0x89: case 0x8A: case 0x8B: // NEG
             regs[(*pc) & 0x3] = -regs[(*pc) & 0x3];
@@ -343,22 +348,22 @@ void loop(unsigned char* memory) {
             sp += 2 * (0[pc] & 0x0F);
             pc = memory + ((0[memory + sp] << 8) | 1[memory + sp]);
             sp += 2;
-            ticks++;
+            ++ticks;
             break;
         case 0xD0: // CAL
             0[memory + sp] = ((pc - memory + 3) & 0xFF00) >> 8;
             1[memory + sp] = ((pc - memory + 3) & 0xFF);
             sp -= 2;
             pc = memory + ((1[pc] << 8) | (2[pc]));
-            ticks++;
-            ticks++;
+            ++ticks;
+            ++ticks;
             break;
         case 0xD4: case 0xD5: case 0xD6: case 0xD7: // RCR
             pc = ((memory[regs[0[pc] & 0x3] + 0] << 8)
                 |(memory[regs[0[pc] & 0x3] + 1])) + memory;
             sp = ((memory[regs[0[pc] & 0x3] + 1] << 8)
                 |(memory[regs[0[pc] & 0x3] + 2]));
-            ticks++;
+            ++ticks;
             break;
         case 0xD8: case 0xD9: case 0xDA: case 0xDB: // CAR
             memory[regs[0[pc] & 0x3] + 0] = ((pc - memory + 3) & 0xFF00) >> 8;
@@ -366,8 +371,8 @@ void loop(unsigned char* memory) {
             memory[regs[0[pc] & 0x3] + 1] = ((sp) & 0xFF00) >> 8;
             memory[regs[0[pc] & 0x3] + 2] = ((sp) & 0xFF);
             pc = memory + ((1[pc] << 8) | 2[pc]);
-            ticks++;
-            ticks++;
+            ++ticks;
+            ++ticks;
             break;
 // BEGIN MACRO FUN
         case 0xDC: // SCL
@@ -394,8 +399,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xDD: // SCR
             if(1[pc] & 0xF0) {
@@ -444,23 +450,27 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
 // END MACRO FUN
         case 0xDF: // IRF
             if((state & 0xFF) & 1[pc]) state |= (1 << Z);
-            ticks++;
-            pc += 2;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xE0: case 0xE1: case 0xE2: case 0xE3: // LAA
             regs[0[pc] & 0x3] = (0xFF & regs[0[pc] & 0x3])
                 | (memory[(1[pc] << 8) | 2[pc]] << 8);
             SET_ZERO_FLAGH(((*pc) & 0x03));
             SET_SIGN_FLAG(((*pc) & 0x03));
-            pc += 3;
-            ticks++;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
 // BEGIN MACRO FUN
         case 0xE4: // ROL
@@ -477,8 +487,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xE5: // ROR
             if(1[pc] & 0xF0) {
@@ -494,8 +505,9 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xE6: // SHL
             if(1[pc] & 0xF0) {
@@ -512,8 +524,9 @@ void loop(unsigned char* memory) {
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
 
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xE7: // SHR
             if(1[pc] & 0xF0) {
@@ -529,96 +542,104 @@ void loop(unsigned char* memory) {
             }
             SET_ZERO_FLAG((1[pc] & 0xC) >> 2);
             SET_SIGN_FLAG((1[pc] & 0xC) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
 // END MACRO FUN
         case 0xE8: // CLI
             state &= ~(1[pc] << 8) | 0xFF;
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xE9: // JMP
             pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xEA: // JIZ
             if(state & (1 << Z)) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xEB: // JNZ
             if(!(state & (1 << Z))) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xEC: // JLT
             if(state & (1 << S)) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xED: // JGE
             if(!(state & (1 << S))) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xEE: // JOF
             if(state & (1 << C)) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xEF: // JNF
             if(!(state & (1 << C))) pc += (signed char)1[pc];
-            ticks++;
+            ++ticks;
             break;
         case 0xF0: // LDI
             regs[(1[pc] & 0xC) >> 2] = (0xFF & regs[(1[pc] & 0xC) >> 2]);
             regs[(1[pc] & 0xC) >> 2] |= memory[((1[pc] & 0xF0) >> 4) + regs[1[pc] & 0x3]] << 8;
             SET_ZERO_FLAGH(((*pc) & 0x0C) >> 2);
             SET_SIGN_FLAG(((*pc) & 0x0C) >> 2);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xF1: // STI
             memory[regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
                 (regs[1[pc] & 0x3] & 0xFF00) >> 8;
             SET_ZERO_FLAGH(((*pc) & 0x03));
             SET_SIGN_FLAG(((*pc) & 0x03));
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xF2: // LRI
             regs[(1[pc] & 0x30) >> 4] = (0xFF & regs[(1[pc] & 0x30) >> 4]);
             regs[(1[pc] & 0x30) >> 4] |= memory[((1[pc] & 0xC0) >> 6) + regs[1[pc] & 0x3] + regs[(1[pc] & 0xC) >> 2]] << 8;
             SET_ZERO_FLAGH(((*pc) & 0x30) >> 4);
             SET_SIGN_FLAG(((*pc) & 0x30) >> 4);
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xF3: // SRI
             memory[regs[(1[pc] & 0x30) >> 4] + regs[(1[pc] & 0xC) >> 2] + ((1[pc] & 0xF0) >> 4)] = 
                 (regs[1[pc] & 0x3] & 0xFF00) >> 8;
             SET_ZERO_FLAGH(((*pc) & 0x03));
             SET_SIGN_FLAG(((*pc) & 0x03));
-            pc += 2;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xF4: case 0xF5: case 0xF6: case 0xF7: // MVI
             regs[(*pc) & 0x03] = (1[pc] << 8) | (2[pc]);
-            pc += 3;
             SET_ZERO_FLAG(((*pc) & 0x3));
             SET_SIGN_FLAG(((*pc) & 0x3));
-            ticks++;
-            ticks++;
+            ++pc;
+            ++ticks;
+            ++pc;
+            ++ticks;
+            ++pc;
             break;
         case 0xF8: case 0xF9: case 0xFA: case 0xFB: // INC
             SET_CARRY_FLAG((unsigned int)regs[(*pc) & 0x3] + 1);
             ++regs[(*pc++) & 0x3];
             SET_ZERO_FLAG(((*pc) & 0x3));
             SET_SIGN_FLAG(((*pc) & 0x3));
-            ticks++;
+            ++ticks;
             break;
         case 0xFC: case 0xFD: case 0xFE: case 0xFF: // DEC
             SET_CARRY_FLAG((unsigned int)regs[(*pc) & 0x3] - 1);
             --regs[(*pc++) & 0x3];
             SET_ZERO_FLAG(((*pc) & 0x3));
             SET_SIGN_FLAG(((*pc) & 0x3));
-            ticks++;
+            ++ticks;
             break;
         }
 
