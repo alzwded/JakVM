@@ -175,7 +175,11 @@ TODO more on sound, I think there might be a need for freq/ampl/fill vectors or 
 
 ~~Channels 1 and 2 are square waves. Channel 3 is triangle/sawtooth (the fill factor set to 128 makes it triangle, setting it to 255 makes it sawtooth). Channels 4 and 5 are sine waves.~~
 
-The audio channels are square waves.
+~~The audio channels are square waves.~~
+
+Channels 1, 2 and 3 are PWM/square waves. Channels 4 and 5 are triangle waves.
+
+Maybe in the future (as technology permits) we will have sawtooth and sines.
 
 The freq. values are badly named. They are actual notes, with 128 being C4 (middle C), and each increment or decrement marks a quarter-tone above or under C4. For example:
 
