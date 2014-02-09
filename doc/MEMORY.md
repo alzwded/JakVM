@@ -173,15 +173,17 @@ TODO more on sound, I think there might be a need for freq/ampl/fill vectors or 
 | sound ch. 5 freq.     | 0xFC1E            |
 | sound ch. 5 ampl.     | 0xFC1F            |
 
-Channels 1 and 2 are square waves. Channel 3 is triangle/sawtooth (the fill factor set to 128 makes it triangle, setting it to 255 makes it sawtooth). Channels 4 and 5 are sine waves.
+~~Channels 1 and 2 are square waves. Channel 3 is triangle/sawtooth (the fill factor set to 128 makes it triangle, setting it to 255 makes it sawtooth). Channels 4 and 5 are sine waves.~~
+
+The audio channels are square waves.
 
 The freq. values are badly named. They are actual notes, with 128 being C4 (middle C), and each increment or decrement marks a quarter-tone above or under C4. For example:
 
 ```
 .code
-; play E5, E above middle C, sine
+; play E5, E above middle C, square
 ;  note height
-    MVI BX, 0FC1Ch
+    MVI BX, 0FC10h
     MVI AX, 0A000h  ; 160 << 8
 ;  note intensity
     INC BX
