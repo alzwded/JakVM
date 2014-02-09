@@ -83,7 +83,7 @@ typedef enum {
 #define G_LRI 8 // 0, 1B 2b imed + 3reg
 #define G_MVI 9 // 2b reg, 2B imed
 
-struct {
+struct iMetaData {
     // the instruction's mnemonic in the assembly language
     char const mnemonic[4];
     // the internal unique id
@@ -161,31 +161,155 @@ typedef struct {
     unsigned char len;
 } element_t;
 
-element_t encode_pus(char first[], char second[], char third[])
+
+typedef struct unprocessed_s {
+    enum { UT_INSTRUCTION, UT_DATA } type;
+    union {
+        struct {
+            struct iMetaData* md;
+            char first[32];
+            char second[32];
+            char third[32];
+            element_t i;
+        } instruction;
+        struct {
+            unsigned char* data;
+            size_t size;
+        } data;
+    };
+    char* label;
+    size_t offset;
+    struct unprocessed_s* next;
+    struct unprocessed_s* prev;
+} unprocessed_t;
+
+void nop_translator(unprocessed_t* instr)
 {
-    size_t i;
-    for(i = 0; i < sizeof(instructions)/sizeof(instructions[0]); ++i) {
-        if(strcmp(first, instructions[i].mnemonic) == 0) {
-            goto found;
-        }
-    }
-    abort();
-found:
-    element_t ret = { { instructions[i].opcodeHint, 0, 0 }, 1 };
-    if(strcmp(first, "AX") == 0) {
-        return ret;
-    } else if(strcmp(first, "BX") == 0) {
-        ret.code[0]++;
-        return ret;
-    } else if(strcmp(first, "CX") == 0) {
-        ret.code[0]++;
-        ret.code[0]++;
-        return ret;
-    } else if(strcmp(first, "SP") == 0) {
-        ret.code[0]++;
-        ret.code[0]++;
-        ret.code[0]++;
-    }
-    abort();
-    return ret;
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.size = 1;
 }
+
+#define TRANSLATE_REG(op, str, offset) do{\
+    if(strcmp(str, "AX") == 0) op |= (0 << offset); \
+    else if(strcmp(str, "BX") == 0) op |= (1 << offset); \
+    else if(strcmp(str, "CX") == 0) op |= (2 << offset); \
+    else if(strcmp(str, "SP") == 0) op |= (3 << offset); \
+    else abort(); \
+}while(0)
+
+#define TRANSLATE_IMED(op, str, mask, offset) do{\
+    if(str[0] == '-') op |= ((-satoi16(str+1)) & mask) << offset; \
+    else op |= (satoi16(str) & mask) << offset; \
+}while(0)
+
+
+void pus_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr.instruction.md->opcodeHint;
+    instr->instruction.i.size = 1;
+    TRANSLATE_REG(instr->instruction.i.code[0], first, 0);
+}
+
+void ljp_translator(unprocessed_t* instr)
+{
+    unprocessed_t* fit = instr->next;
+    unprocessed_t* bit = instr->prev;
+
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.size = 3;
+
+    while(fit || bit) {
+        if(strcmp(fit->label, instr->instruction.first) == 0) {
+            instr->instruction.i.code[1] = (fit->offset & 0xFF00) >> 8;
+            instr->instruction.i.code[2] = fit->offset & 0xFF;
+            return;
+        }
+        if(strcmp(bit->label, instr->instruction.first) == 0) {
+            instr->instruction.i.code[1] = (bit->offset & 0xFF00) >> 8;
+            instr->instruction.i.code[2] = bit->offset & 0xFF;
+            return;
+        }
+        if(fit) fit = fit->next;
+        if(bit) bit = bit->prev;
+    }
+    abort();
+}
+
+void mov_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.size = 1;
+
+    TRANSLATE_REG(intr->instruction.i.code[0], instr->instruction.first, 2);
+    TRANSLATE_REG(intr->instruction.i.code[0], instr->instruction.second, 0);
+}
+
+void add_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.size = 2;
+
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.first, 2);
+    if(isImed(instr->instruction.i.second)) {
+        TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.second, 0xF, 4);
+    } else if(isConst) {
+        // find it, get value, etc...
+    } else {
+        TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.second, 0);
+    }
+}
+
+typedef void (*translator_fn)(unprocessed_t* instr);
+
+translator_fn translators[] = {
+    &nop_translator,
+    &pus_translator,
+    &ljp_translator,
+    &mov_translator,
+    &add_translator,
+    &rcl_translator,
+    &jmp_translator,
+    &ldi_translator,
+    &lri_translator,
+    &mvi_translator,
+};
+
+unprocessed_t* unprocessed_list;
+unprocessed_t** addressDependent;
+
+/*
+   first pass:
+        parse .jasm file
+        if instruction, unprocessed.instruction.md = find_by_mnemonic
+                        unprocessed.instruction.first,second,third = <IN>
+        if data,    unprocessed.data.size = <IN>
+                    unprocessed.data.data = <IN>
+    second pass:
+        foreach unprocessed which is instruction
+            call translators[instruction.md.group]
+
+    a translator is of the form:
+        start with instruction.md.opcodeHint
+        if instruction.md.group has parameters
+            foreach parameter 
+            switch parameter.type
+            REG: translate reg
+            IMMED: translate imed
+            LABEL: translate label
+
+    translate reg:
+        switch(regStr)
+        AX: add 0 << offset
+        BX: add 1 << offset
+        CX: add 2 << offset
+        SP: add 3 << offset
+
+    translate imed:
+        base = base? imed
+        call satoi<base>(imed)
+
+    translate label:
+        search forward or backward for label with a signed counter
+        starting from current instruction
+*/
