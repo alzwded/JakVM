@@ -30,7 +30,7 @@ ADD AX, BX          ADD
 SUB AX, 16          SUBstract
 MUL AX, CX          MULtiply
 DIV CX, 4           DIVide
-MOV AX, 2           MODulo
+MOD AX, 2           MODulo
 CAL :memcmp:        CALl
 RCL 8               ReCalL
 CAR AX, :routine:   CAll Register
