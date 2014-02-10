@@ -157,25 +157,23 @@ TODO more on sound, I think there might be a need for freq/ampl/fill vectors or 
 | description           | range             |
 |-----------------------|-------------------|
 | sound ch. 1 freq.     | 0xFC10            |
-| sound ch. 1 ampl.     | 0xFC11            |
-| sound ch. 1 fill      | 0xFC12            |
-| reserved              | 0xFC13            |
-| sound ch. 2 freq.     | 0xFC14            |
-| sound ch. 2 ampl.     | 0xFC15            |
-| sound ch. 2 fill      | 0xFC16            |
-| reserved              | 0xFC17            |
-| sound ch. 3 freq.     | 0xFC18            |
-| sound ch. 3 ampl.     | 0xFC19            |
-| sound ch. 3 fill      | 0xFC1A            |
-| reserved              | 0xFC1B            |
-| sound ch. 4 freq.     | 0xFC1C            |
-| sound ch. 4 ampl.     | 0xFC1D            |
-| sound ch. 5 freq.     | 0xFC1E            |
-| sound ch. 5 ampl.     | 0xFC1F            |
+| sound ch. 1 fill      | 0xFC11            |
+| sound ch. 2 freq.     | 0xFC12            |
+| sound ch. 2 fill      | 0xFC13            |
+| sound ch. 3 freq.     | 0xFC14            |
+| sound ch. 3 fill      | 0xFC15            |
+| sound ch. 4 freq.     | 0xFC16            |
+| sound ch. 4 fill      | 0xFC17            |
+| sound ch. 5 freq.     | 0xFC18            |
+| sound ch. 5 fill      | 0xFC19            |
 
 ~~Channels 1 and 2 are square waves. Channel 3 is triangle/sawtooth (the fill factor set to 128 makes it triangle, setting it to 255 makes it sawtooth). Channels 4 and 5 are sine waves.~~
 
-The audio channels are square waves.
+~~The audio channels are square waves.~~
+
+Channels 1-3 are PWM square wave generators. You can fill in the adjusted frequency (see below) or the fill factor.
+
+Channels 4&5 are triangle/sawtooth generators. If the fill factor is 128, it is a triangle wave. If it's 255 it's a sawtooth. The fill factor determines where the function will peak.
 
 The freq. values are badly named. They are actual notes, with 128 being C4 (middle C), and each increment or decrement marks a quarter-tone above or under C4. For example:
 
@@ -185,14 +183,15 @@ The freq. values are badly named. They are actual notes, with 128 being C4 (midd
 ;  note height
     MVI BX, 0FC10h
     MVI AX, 0A000h  ; 160 << 8
+    STO BX, AX
 ;  note intensity
     INC BX
     MVI AX, 08000h  ; meh amplitude
     STO BX, AX
 ```
 
-The values of values of 0x0 set to any of the fields silence that channel (because an amplitude of 0 means you can't hear it, a frequency of 0 means it doesn't exit, a fill of 0 means you are outputting for 0 seconds (or some other interpretation, it's still a frequency of 0)).
+The values of values of 0x0 set to any of the fields silence that channel (because an amplitude of 0 means you can't hear it, a frequency of 0 means it doesn't exit, a fill of 0 means you are outputting for 0 seconds (or some other interpretation, it's still a frequency of 0)). Also, a fill factor of 255 for the square waves means you won't hear anything since you can practically consider the membrane of your speaker permanently glued in MAX position. However, setting a square wave to fill factor 255 might end up increasing the volume because of how the mixer works, but this is not guaranteed.
 
-In practice, only C0-B9 are (somewhat) supported. That's 240 values centered in 128, so 8-248 for the freq. fields.
+In theory, you have C0-B9 which are (somewhat) supported. That's 240 values centered in 128, so 8-248 for the freq. fields. In practice, however, there's only like C1-B8 which actually manage to cause some noise. Also, mind you some frequencies you just can't hear (like 17Hz or 32kHz).
 
-These are read on each frame and the output is adjusted.
+These are read on each frame and the output is adjusted according to these values.
