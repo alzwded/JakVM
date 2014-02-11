@@ -68,6 +68,8 @@ void loop(unsigned char* memory) {
 #define sp work.REGS[3]
 #define state work.STATE
 
+    unsigned char halted = 0;
+
     // time and synchronization
     struct timespec t1, t2;
     struct timespec ts;
@@ -97,7 +99,10 @@ void loop(unsigned char* memory) {
             state &= ~(1 << GEI); // unset interrupt flag to avoid endless interrupt loop
             memcpy(is, &work, sizeof(struct work_s));
             pc = &0x00[memory];
+            halted = 0;
         }
+
+        if(halted) goto synchro;
 
         // execute current instruction
         switch(*pc) {
@@ -121,9 +126,11 @@ void loop(unsigned char* memory) {
             pc = memory;
             sp = 0xBFFE;
             break;
-        default: // unsupported op-codes default to HLT
+        default: // unsupported op-codes default to halting
+            break;
         case 0x05: // HLT
-            /* do nothing */
+            halted = 1;
+            ++pc;
             break;
         case 0x06: // SWP
             ++pc;
@@ -649,6 +656,7 @@ void loop(unsigned char* memory) {
             break;
         }
 
+synchro:
         // synchronize every 250000 instructions or so
         if(ticks >= INSTR_PER_FRAME) {
             ticks = 0;
