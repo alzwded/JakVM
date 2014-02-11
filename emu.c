@@ -16,10 +16,11 @@
 sig_atomic_t keep_going = 1;
 
 // target 250000 instructions / 60Hz frame
+// updated to 125000 / 120Hz frame because of sound
 // 17M ns just so happen to equal 17ms, which is about a 60th of a second
 // give or take (take 20ms)
-#define FRAME_LEN 17000000l
-#define INSTR_PER_FRAME 250000l
+#define FRAME_LEN  8500000l
+#define INSTR_PER_FRAME 125000l
 // why does clock_nanosleep work as intended but nanosleep yields different
 //    sleep amounts on different computers?
 #define SLEEP(FIN, INI) do{\
