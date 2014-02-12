@@ -15,6 +15,28 @@
 
 sig_atomic_t keep_going = 1;
 
+#define GFX_CB 0
+#define SFX_CB 1
+#define LAST_CB 2
+typedef void (*ui_callback_f)(void);
+typedef struct {
+    ui_callback_f func;
+    unsigned frame;
+} ui_callback_t;
+static ui_callback_t callbacks[LAST_CB] = { { NULL, 0 }, { NULL, 0 }, };
+static unsigned frameCnt = 0;
+static unsigned maxFrameCnt = 1;
+
+void set_callback(unsigned callback, ui_callback_f func, unsigned frameSkip)
+{
+    if(callback < LAST_CB) {
+        frameSkip = (frameSkip % 60) + 1; // always 1 - 60
+        callbacks[callback].func = func;
+        callbacks[callback].frame = frameSkip;
+        maxFrameCnt = (maxFrameCnt < frameSkip) ? frameSkip : maxFrameCnt;
+    }
+}
+
 // target 250000 instructions / 60Hz frame
 // updated to 125000 / 120Hz frame because of sound
 // 17M ns just so happen to equal 17ms, which is about a 60th of a second
@@ -659,7 +681,15 @@ void loop(unsigned char* memory) {
 synchro:
         // synchronize every 250000 instructions or so
         if(ticks >= INSTR_PER_FRAME) {
+            size_t i;
+            for(i = 0; i < LAST_CB; ++i) {
+                if(callbacks[i].func && (frameCnt % callbacks[i].frame) == 0) {
+                    callbacks[i].func();
+                }
+            }
+            frameCnt = (frameCnt + 1) % maxFrameCnt;
             ticks = 0;
+            clock_gettime(CLOCK_MONOTONIC, &t2);
             SLEEP(t2, t1);
         }
     }
