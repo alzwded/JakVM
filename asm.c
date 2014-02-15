@@ -161,7 +161,6 @@ typedef struct {
     unsigned char len;
 } element_t;
 
-
 typedef struct unprocessed_s {
     enum { UT_INSTRUCTION, UT_DATA } type;
     union {
@@ -170,6 +169,7 @@ typedef struct unprocessed_s {
             char first[32];
             char second[32];
             char third[32];
+            char fourth[32];
             element_t i;
         } instruction;
         struct {
@@ -183,9 +183,41 @@ typedef struct unprocessed_s {
     struct unprocessed_s* prev;
 } unprocessed_t;
 
-void nop_translator(unprocessed_t* instr)
+unsigned char groupSizes[] =
+{
+    /* G_NOP */ 1,
+    /* G_PUS */ 1,
+    /* G_LJP */ 3,
+    /* G_MOV */ 1,
+    /* G_ADD */ 2,
+    /* G_RCL */ 1,
+    /* G_JMP */ 2,
+    /* G_LDI */ 2,
+    /* G_LRI */ 2,
+    /* G_MVI */ 3,
+};
+
+static void pretranslate(unprocessed_t* instr)
+{
+    switch(instr->type) {
+    case UT_INSTRUCTION:
+        instr->offset = (instr->prev)
+            ? (instr->prev->offset + groupSizes[instr->instruction.md->group])
+            : 0;
+         break;
+    case UT_DATA:
+        instr->offset = (instr->prev)
+            ? (instr->prev->offset + instr->data.size)
+            : 0;
+        break;
+    }
+}
+
+static void nop_translator(unprocessed_t* instr)
 {
     instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
     instr->instruction.i.size = 1;
 }
 
@@ -203,19 +235,23 @@ void nop_translator(unprocessed_t* instr)
 }while(0)
 
 
-void pus_translator(unprocessed_t* instr)
+static void pus_translator(unprocessed_t* instr)
 {
     instr->instruction.i.code[0] = instr.instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
     instr->instruction.i.size = 1;
-    TRANSLATE_REG(instr->instruction.i.code[0], first, 0);
+    TRANSLATE_REG(instr->instruction.i.code[0], instr->instruction.i.first, 0);
 }
 
-void ljp_translator(unprocessed_t* instr)
+static void ljp_translator(unprocessed_t* instr)
 {
     unprocessed_t* fit = instr->next;
     unprocessed_t* bit = instr->prev;
 
     instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
     instr->instruction.i.size = 3;
 
     while(fit || bit) {
@@ -235,16 +271,18 @@ void ljp_translator(unprocessed_t* instr)
     abort();
 }
 
-void mov_translator(unprocessed_t* instr)
+static void mov_translator(unprocessed_t* instr)
 {
     instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
     instr->instruction.i.size = 1;
 
     TRANSLATE_REG(intr->instruction.i.code[0], instr->instruction.first, 2);
     TRANSLATE_REG(intr->instruction.i.code[0], instr->instruction.second, 0);
 }
 
-void add_translator(unprocessed_t* instr)
+static void add_translator(unprocessed_t* instr)
 {
     instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
     instr->instruction.i.code[1] = 0;
@@ -253,10 +291,163 @@ void add_translator(unprocessed_t* instr)
     TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.first, 2);
     if(isImed(instr->instruction.i.second)) {
         TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.second, 0xF, 4);
-    } else if(isConst) {
-        // find it, get value, etc...
+    } else if(isConst(instr->instruction.i.second)) {
+        struct const_t* c = consts;
+        while(c) {
+            if(strcmp(instr->instruction.i.second, c) == 0) {
+                if(isImed(c->value)) {
+                    TRANSLATE_IMED(instr->instruction.i.code[1], x->value, 0xF, 4);
+                }
+            }
+        }
     } else {
         TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.second, 0);
+    }
+}
+
+static void rcl_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.size = 1;
+    TRANSLATE_IMED(instr->instruction.i.code[0], instr->instruction.i.first, 0xF, 0);
+}
+
+static void jmp_translator(unprocessed_t* instr)
+{   
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
+    instr->instruction.i.size = 2;
+
+    if(isImed(instr->instruction.i.first)) {
+        TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.first, 0xFF, 0);
+        return;
+    } else if(isConst(instr->instruction.i.first)) {
+        struct const_t* c = consts;
+        while(c) {
+            if(strcmp(instr->instruction.i.second, c) == 0) {
+                if(isImed(c->value)) {
+                    TRANSLATE_IMED(instr->instruction.i.code[1], x->value, 0xF, 4);
+                } else {
+                    unprocessed_t* fit = instr->next;
+                    unprocessed_t* bit = instr->prev;
+
+                    while(fit || bit) {
+                        if(strcmp(fit->label, c->value) == 0) {
+                            instr->instruction.i.code[1] = fit->offset - instr->offset;
+                            return;
+                        }
+                        if(strcmp(bit->label, c->value) == 0) {
+                            instr->instruction.i.code[1] = instr->offset - bit->offset;
+                            return;
+                        }
+                        if(fit) fit = fit->next;
+                        if(bit) bit = bit->prev;
+                    }
+                    abort();
+                }
+            }
+        }
+    } else {
+        unprocessed_t* fit = instr->next;
+        unprocessed_t* bit = instr->prev;
+
+        while(fit || bit) {
+            if(strcmp(fit->label, instr->instruction.first) == 0) {
+                instr->instruction.i.code[1] = fit->offset - instr->offset;
+                return;
+            }
+            if(strcmp(bit->label, instr->instruction.first) == 0) {
+                instr->instruction.i.code[1] = instr->offset - bit->offset;
+                return;
+            }
+            if(fit) fit = fit->next;
+            if(bit) bit = bit->prev;
+        }
+        abort();
+    }
+}
+
+static void ldi_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
+    instr->instruction.i.size = 2;
+    TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.first, 0xF, 4);
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.second, 2);
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.third, 0);
+}
+
+static void lri_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
+    instr->instruction.i.size = 2;
+    TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.first, 0x3, 6);
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.second, 4);
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.third, 2);
+    TRANSLATE_REG(instr->instruction.i.code[1], instr->instruction.i.fourth, 0);
+}
+
+static void mvi_translator(unprocessed_t* instr)
+{
+    instr->instruction.i.code[0] = instr->instruction.md->opcodeHint;
+    instr->instruction.i.code[1] = 0;
+    instr->instruction.i.code[2] = 0;
+    instr->instruction.i.size = 3;
+
+    if(isImed(instr->instruction.i.first)) {
+        TRANSLATE_IMED(instr->instruction.i.code[1], instr->instruction.i.first, 0xFF00, 0);
+        TRANSLATE_IMED(instr->instruction.i.code[2], instr->instruction.i.first, 0xFF, 0);
+    } else if(isConst(instr->instruction.i.first)) {
+        struct const_t* c = consts;
+        while(c) {
+            if(strcmp(instr->instruction.i.second, c) == 0) {
+                if(isImed(c->value)) {
+                    TRANSLATE_IMED(instr->instruction.i.code[1], x->value, 0xF, 4);
+                } else {
+                    unprocessed_t* fit = instr->next;
+                    unprocessed_t* bit = instr->prev;
+
+                    while(fit || bit) {
+                        if(strcmp(fit->label, c->value) == 0) {
+                            instr->instruction.i.code[1] = (fit->offset & 0xFF00) >> 8;
+                            instr->instruction.i.code[2] = fit->offset & 0xFF;
+                            return;
+                        }
+                        if(strcmp(bit->label, c->value) == 0) {
+                            instr->instruction.i.code[1] = (bit->offset & 0xFF00) >> 8;
+                            instr->instruction.i.code[2] = bit->offset & 0xFF;
+                            return;
+                        }
+                        if(fit) fit = fit->next;
+                        if(bit) bit = bit->prev;
+                    }
+                    abort();
+                }
+            }
+        }
+    } else {
+        unprocessed_t* fit = instr->next;
+        unprocessed_t* bit = instr->prev;
+
+        while(fit || bit) {
+            if(strcmp(fit->label, instr->instruction.first) == 0) {
+                instr->instruction.i.code[1] = (fit->offset & 0xFF00) >> 8;
+                instr->instruction.i.code[2] = fit->offset & 0xFF;
+                return;
+            }
+            if(strcmp(bit->label, instr->instruction.first) == 0) {
+                instr->instruction.i.code[1] = (bit->offset & 0xFF00) >> 8;
+                instr->instruction.i.code[2] = bit->offset & 0xFF;
+                return;
+            }
+            if(fit) fit = fit->next;
+            if(bit) bit = bit->prev;
+        }
+        abort();
     }
 }
 
@@ -278,16 +469,27 @@ translator_fn translators[] = {
 unprocessed_t* unprocessed_list;
 unprocessed_t** addressDependent;
 
+struct const_t {
+    const char* name;
+    const char* value;
+    struct const_t* next;
+} *consts;
+
 /*
    first pass:
         parse .jasm file
         if instruction, unprocessed.instruction.md = find_by_mnemonic
-                        unprocessed.instruction.first,second,third = <IN>
+                        unprocessed.instruction.first,second,third,fourth = <IN>
+                    if instruction not of G_LJP, G_JMP or G_MVI
+                        translators[group](instruction)
+                    else
+                        mark size and offset
         if data,    unprocessed.data.size = <IN>
                     unprocessed.data.data = <IN>
+        if label,   mark instr/data with label
     second pass:
         foreach unprocessed which is instruction
-            call translators[instruction.md.group]
+            call translators[instruction.md.group](instruction)
 
     a translator is of the form:
         start with instruction.md.opcodeHint
