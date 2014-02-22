@@ -233,7 +233,9 @@ static void nop_translator(unprocessed_t* instr)
 
 #define TRANSLATE_IMED(op, str, mask, offset) do{\
     size_t len = strlen(str); \
+    assert(len); \
     if(str[0] == '-') { \
+        assert(str[1]); \
         if(str[1] == '0') { \
             if(str[len - 1] == 'h') { \
                 op |= ((-satoi16(str+1)) & mask) << offset; \
