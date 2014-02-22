@@ -1,3 +1,5 @@
+#include "asm_utils.c"
+
 typedef enum {
     UNKNOWN,
     INSTRUCTION,
@@ -230,8 +232,28 @@ static void nop_translator(unprocessed_t* instr)
 }while(0)
 
 #define TRANSLATE_IMED(op, str, mask, offset) do{\
-    if(str[0] == '-') op |= ((-satoi16(str+1)) & mask) << offset; \
-    else op |= (satoi16(str) & mask) << offset; \
+    size_t len = strlen(str); \
+    if(str[0] == '-') { \
+        if(str[1] == '0') { \
+            if(str[len - 1] == 'h') { \
+                op |= ((-satoi16(str+1)) & mask) << offset; \
+            } else { \
+                op |= ((-satoi8(str+1)) & mask) << offset; \
+            } \
+        } else { \
+            op |= ((-satoi10(str+1)) & mask) << offset; \
+        } \
+    } else { \
+        if(str[0] == '0') { \
+            if(str[len - 1] == 'h') {\
+                op |= (satoi16(str) & mask) << offset; \
+            } else { \
+                op |= (satoi8(str) & mask) << offset; \
+            } \
+        } else { \
+            op |= (satoi10(str) & mask) << offset; \
+        } \
+    } \
 }while(0)
 
 
