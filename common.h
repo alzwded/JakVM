@@ -16,4 +16,7 @@ extern void set_callback(unsigned callback, ui_callback_f func, unsigned frameSk
 
 extern unsigned gfx_buffer_start;
 
+// memory needs to be 64k large
+extern void loop(unsigned char* memory);
+
 #endif
