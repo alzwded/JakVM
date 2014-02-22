@@ -1,3 +1,4 @@
+#include "common.h"
 #include <string.h> // mem*** functions
 #include <time.h> // time functions, data types
 #include <signal.h> // sig_atomic_t
@@ -15,10 +16,6 @@
 
 sig_atomic_t keep_going = 1;
 
-#define GFX_CB 0
-#define SFX_CB 1
-#define LAST_CB 2
-typedef void (*ui_callback_f)(void);
 typedef struct {
     ui_callback_f func;
     unsigned frame;
@@ -26,6 +23,10 @@ typedef struct {
 static ui_callback_t callbacks[LAST_CB] = { { NULL, 0 }, { NULL, 0 }, };
 static unsigned frameCnt = 0;
 static unsigned maxFrameCnt = 1;
+
+static const unsigned gfxs[] = { 0xE000, 0xE800 };
+static size_t gfx_idx = 0;
+unsigned gfx_buffer_start = 0xE000;
 
 void set_callback(unsigned callback, ui_callback_f func, unsigned frameSkip)
 {
@@ -69,11 +70,7 @@ void set_callback(unsigned callback, ui_callback_f func, unsigned frameSkip)
 }while(0)
 
 void loop(unsigned char* memory) {
-    struct work_s {
-        unsigned short REGS[4]; // AX, BX, CX, SP
-        unsigned char* PC;
-        short STATE; // RS:RF
-    } work;
+    work_t work;
 // alias bit positions to their symbolic names
 #define Z 15
 #define C 14
@@ -83,7 +80,7 @@ void loop(unsigned char* memory) {
 #define BS 5
 #define SWINT 1
 #define GEI 0
-    unsigned char is[sizeof(struct work_s)];
+    unsigned char is[sizeof(work_t)];
 // storage independent aliases
 #define regs work.REGS
 #define pc work.PC
@@ -107,7 +104,7 @@ void loop(unsigned char* memory) {
     pc = 0x0000 + memory;
     // except for sp, which starts at 0xBFFE
     sp = 0xBFFE;
-    memset(is, 0, sizeof(struct work_s));
+    memset(is, 0, sizeof(work_t));
 
     while(keep_going) {
         // begin a synchronization frame
@@ -119,7 +116,7 @@ void loop(unsigned char* memory) {
         {
             state &= ~(1 << SWINT); // clear virtual SWINT flag
             state &= ~(1 << GEI); // unset interrupt flag to avoid endless interrupt loop
-            memcpy(is, &work, sizeof(struct work_s));
+            memcpy(is, &work, sizeof(work_t));
             pc = &0x00[memory];
             halted = 0;
         }
@@ -155,6 +152,9 @@ void loop(unsigned char* memory) {
             ++pc;
             break;
         case 0x06: // SWP
+            gfx_idx = (gfx_idx + 1) % (sizeof(gfxs) / sizeof(gfxs[0]));
+            gfx_buffer_start = gfxs[gfx_idx];
+            halted = 1;
             ++pc;
             break;
         case 0x08: // CMP
@@ -165,7 +165,7 @@ void loop(unsigned char* memory) {
             break;
         case 0x09: // RET
             state &= 0xFF01;
-            memcpy(&work, is, sizeof(struct work_s));
+            memcpy(&work, is, sizeof(work_t));
             break;
         case 0x0A: // CMU
             state = (state & ~0xA0)
@@ -684,7 +684,7 @@ synchro:
             size_t i;
             for(i = 0; i < LAST_CB; ++i) {
                 if(callbacks[i].func && (frameCnt % callbacks[i].frame) == 0) {
-                    callbacks[i].func();
+                    callbacks[i].func(&work);
                 }
             }
             frameCnt = (frameCnt + 1) % maxFrameCnt;

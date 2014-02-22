@@ -17,8 +17,9 @@ Interrupt flags
 | RS            | Reset              |
 | XT            | External interrupt |
 | BS            | Buffer swapped     |
+| AE            | Audio buffer empty |
 
-The layout is: `RS``XT``BS``0``0``0``0``0`
+The layout is: `RS``XT``BS``AE``0``0``0``0`
 
 These flags are all set by external events. If none of them are set, it was a software interrupt (INT instruction).
 

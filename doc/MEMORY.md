@@ -28,7 +28,7 @@ Display
 | Pallettes             | 0xD400 - 0xD7FF   | 1024B | 256 x 4        |
 | Sprites               | 0xD800 - 0xD7FF   | 2040B | 60 x 34        |
 | Background1           | 0xE000 - 0xE7FF   | 2048B | 1024 x 2       |
-| Background2           | 0xD800 - 0xEFFF   | 2048B | 1024 x 2       |
+| Background2           | 0xE800 - 0xEFFF   | 2048B | 1024 x 2       |
 
 The screen background is split into 1024 8x8 blocks (2 indexes). A block index and a pallette index. That's 2048.
 
